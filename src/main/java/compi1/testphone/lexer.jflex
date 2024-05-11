@@ -142,8 +142,8 @@ booleanFalse = false
     <YYINITIAL> {Integer}           { return symbol(sym.INTEGER, Integer.parseInt(yytext()));}
     <YYINITIAL> {Float}             { return symbol(sym.FLOAT, Float.parseFloat(yytext()));}
     <YYINITIAL> {Variable}          { return symbol(sym.VARIABLE, yytext());}
-    <YYINITIAL> {booleanTrue}       { return symbol(sym.TRUE_B, yytext());}
-    <YYINITIAL> {booleanFalse}      { return symbol(sym.FALSE_B, yytext());}
+    <YYINITIAL> {booleanTrue}       { return symbol(sym.TRUE_B, Boolean.parseBoolean(yytext()));}
+    <YYINITIAL> {booleanFalse}      { return symbol(sym.FALSE_B, Boolean.parseBoolean(yytext()) );}
 
 
     <STRING> {

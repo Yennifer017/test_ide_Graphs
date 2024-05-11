@@ -1088,12 +1088,12 @@ public class Lexer implements java_cup.runtime.Scanner {
           // fall through
           case 89: break;
           case 44:
-            { return symbol(sym.TRUE_B, yytext());
+            { return symbol(sym.TRUE_B, Boolean.parseBoolean(yytext()));
             }
           // fall through
           case 90: break;
           case 45:
-            { return symbol(sym.FALSE_B, yytext());
+            { return symbol(sym.FALSE_B, Boolean.parseBoolean(yytext()) );
             }
           // fall through
           case 91: break;
