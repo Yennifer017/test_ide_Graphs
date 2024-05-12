@@ -19,6 +19,9 @@ parser code {:
     private Project project;
 
     private boolean useInnerTable;
+    private boolean saveData;
+    private Executable executable;
+    private Leyenda leyenda;
 
 
     //conect the parser with the lexer
@@ -28,7 +31,10 @@ parser code {:
         semanticErrors = new LinkedList<>();
         globalSymbolTable = new HashMap<>();
         useInnerTable = false;
+        saveData = true;
         project = new Project();
+
+        leyenda = new Leyenda();
     }
 
     //getters
@@ -49,6 +55,16 @@ parser code {:
 
     public Project getProject(){
         return this.project;
+    }
+
+    /*----------------------------------------------------
+                        UTIL METHODS
+    ------------------------------------------------------*/
+    private InformationTarget getInformationTarget(){
+        if(executable == null){
+            executable = new InformationTarget();
+        }
+        return (InformationTarget) executable;
     }
 
 
@@ -105,7 +121,6 @@ non terminal            instruction, code_inst, more_code, with_llaves,
                             optional_values_lines, optional_attribute_linec,
                         statement, internal_block,
                         variable_statement, asignation, possible_values,
-                        condition,
                         if_block, if_stmt, else_block,
                         for_block, for_stmt, variable_definition, optional_increment,
                         while_block, while_statement,
@@ -113,7 +128,7 @@ non terminal            instruction, code_inst, more_code, with_llaves,
                         ;
 
 non terminal String     align_specification, lines_style_attr, pure_string_data, string_data, all_acepted_data ;
-non terminal Boolean    pure_boolean_data, boolean_data;
+non terminal Boolean    pure_boolean_data, boolean_data, condition;
 non terminal Integer    numeric_integer_data    ;
 non terminal Float      numeric_data, pure_numeric_data ;
 
@@ -238,12 +253,28 @@ more_key_words ::= COMA string_data:d more_key_words                {:project.ge
 
 /*solo una grafica*/
 chart_creation ::= LLAVE_L elements_chart LLAVE_R ;
-elements_chart ::= leyend_chart_op DATA TWO_DOTS specification_data leyend_chart_op_f ;
+elements_chart ::= leyend_chart_op DATA:d TWO_DOTS specification_data leyend_chart_op_f 
+                    {:
+                        if(executable != null){ //save data
+                            if(executable instanceof DataContainer){
+                                DataContainer dataContainer = (DataContainer) executable;
+                                dataContainer.setLeyenda(leyenda);
+                            } else if (executable instanceof InformationTarget){
+                                InformationTarget infoT = (InformationTarget) executable;
+                                infoT.setLine(dright);
+                                infoT.setColumn(dleft);
+                            }
+                            project.getData().add(executable);
+                            executable = null;
+                            leyenda = new Leyenda();
+                        }
+                    :}
+                    ;
 specification_data ::= data_chart
         | information_target
         ;
 
-leyend_chart_op ::=  leyend_chart COMA
+leyend_chart_op ::=  leyend_chart COMA  
 		| /* empty */
 		;
 leyend_chart_op_f ::= COMA leyend_chart
@@ -251,12 +282,13 @@ leyend_chart_op_f ::= COMA leyend_chart
 		;
 
 /*--------------LEYENDA PARA GRAFICAS -------------------*/
-leyend_chart ::= CHART TWO_DOTS LLAVE_L specifications_leyend LLAVE_R ;
+leyend_chart ::= CHART TWO_DOTS LLAVE_L specifications_leyend LLAVE_R
+                ;
 specifications_leyend ::= specification more_specifications ;
-specification ::= TITLE TWO_DOTS string_data
-		| X_AXIS_L TWO_DOTS string_data
-		| Y_AXIS_L TWO_DOTS string_data
-		| LEGEND_POS TWO_DOTS align_specification
+specification ::= TITLE TWO_DOTS string_data:d          {: leyenda.setTitle(d); :}
+		| X_AXIS_L TWO_DOTS string_data:d       {: leyenda.setXAxisLabel(d);:}
+		| Y_AXIS_L TWO_DOTS string_data:d       {: leyenda.setYAxisLabel(d);:}
+		| LEGEND_POS TWO_DOTS align_specification:d     {: leyenda.setLegendPosition(d);:}
 		;
 more_specifications ::= COMA specification more_specifications
 		| /* empty */
@@ -264,22 +296,40 @@ more_specifications ::= COMA specification more_specifications
 
 /*----------------- TARJETA DE INFORMACION -------------------*/
 information_target ::= LLAVE_L data_target more_data_target LLAVE_R ;
-data_target ::= VALUE TWO_DOTS numeric_data
-		| LABEL TWO_DOTS string_data
-		| DESCRIPTION TWO_DOTS string_data
-		| ICON TWO_DOTS string_data
-		| COLOR TWO_DOTS HEX_COLOR
-		| LINK TWO_DOTS string_data
+data_target ::= VALUE TWO_DOTS numeric_data:n       {: 
+                                                        InformationTarget infoT = getInformationTarget();
+                                                        infoT.setValue(n);
+                                                    :}
+		| LABEL TWO_DOTS string_data:s      {: 
+                                                        InformationTarget infoT = getInformationTarget();
+                                                        infoT.setLabel(s);
+                                                    :}      
+		| DESCRIPTION TWO_DOTS string_data:s    {: 
+                                                        InformationTarget infoT = getInformationTarget();
+                                                        infoT.setDescription(s);
+                                                    :}
+		| ICON TWO_DOTS string_data:s       {: 
+                                                        InformationTarget infoT = getInformationTarget();
+                                                        infoT.setIcon(s);
+                                                    :}
+		| COLOR TWO_DOTS HEX_COLOR:c        {: 
+                                                        InformationTarget infoT = getInformationTarget();
+                                                        infoT.setColor(c);
+                                                    :}  
+		| LINK TWO_DOTS string_data:l       {: 
+                                                        InformationTarget infoT = getInformationTarget();
+                                                        infoT.setLink(l);
+                                                    :}
 		;
 more_data_target ::= COMA data_target more_data_target  
                 | /* empty */;
 
 /*----------------- DATOS PARA GRAFICAS -------------------*/
 data_chart ::= CORCHETE_L LLAVE_L specific_chart_data CORCHETE_R   ;
-specific_chart_data ::= chart_barras
-		| chart_pie
-		| chart_points
-		| chart_lines
+specific_chart_data ::= chart_barras    
+		| chart_pie             
+		| chart_points          
+		| chart_lines           
 		;
 
 /****************** GRAFICA DE BARRAS   *********************/
@@ -288,8 +338,44 @@ more_values_barras ::= COMA LLAVE_L value_chart_barras more_values_barras
 		| /* empty */
 		;
 
-value_chart_barras ::= CATEGORY TWO_DOTS string_data COMA VALUE TWO_DOTS numeric_data optional_color_b LLAVE_R  ;
-optional_color_b ::= COMA COLOR TWO_DOTS HEX_COLOR
+value_chart_barras ::= CATEGORY TWO_DOTS string_data:sc COMA VALUE TWO_DOTS numeric_data:n optional_color_b LLAVE_R  
+                {: 
+                    if(executable == null){
+                        executable = new ChartBarras();
+                        ChartBarras chart = (ChartBarras) executable;
+                        DataBarras data = new DataBarras();
+                        data.setCategory(sc);
+                        data.setValue(n);
+                        chart.getDataBarras().add(data);
+                    } else {
+                        ChartBarras chart = (ChartBarras) executable;
+                        if(chart.getDataBarras().get(chart.getDataBarras().size()-1).getCategory() == null){
+                            //cuando ya esta inicializada
+                            chart.getDataBarras().get(chart.getDataBarras().size()-1).setCategory(sc);
+                            chart.getDataBarras().get(chart.getDataBarras().size()-1).setValue(n);
+                        } else {
+                            DataBarras data = new DataBarras();
+                            data.setCategory(sc);
+                            data.setValue(n);
+                            chart.getDataBarras().add(data);
+                        }
+                    }
+                :}
+                ;
+optional_color_b ::= COMA COLOR TWO_DOTS HEX_COLOR:c    
+                {:
+                    try{
+                        if(executable == null){
+                            executable = new ChartBarras();
+                        }
+                        ChartBarras chart = (ChartBarras) executable;
+                        DataBarras data = new DataBarras();
+                        data.setColor(c);
+                        chart.getDataBarras().add(data);
+                    } catch(NullPointerException | ClassCastException e){
+                        addSemanticError(cleft, cright, c, e.toString());
+                    }
+                :}
                 | /* empty */ ;
 
 
@@ -299,8 +385,49 @@ more_values_pie ::= COMA LLAVE_L value_chart_pie more_values_pie
 		| /* empty */
 		;
 
-value_chart_pie ::= LABEL TWO_DOTS string_data COMA VALUE TWO_DOTS numeric_data optional_color_pie LLAVE_R ;
-optional_color_pie ::= COMA COLOR TWO_DOTS HEX_COLOR
+value_chart_pie ::= LABEL:lab TWO_DOTS string_data:l COMA VALUE TWO_DOTS numeric_data:n optional_color_pie LLAVE_R 
+                {: 
+                    try{
+                        if(executable == null){
+                            executable = new ChartPastel();
+                            ChartPastel chart = (ChartPastel) executable;
+                            DataPastel data = new DataPastel();
+                            data.setLabel(l);
+                            data.setValue(n);
+                            chart.getDataPastel().add(data);
+                        } else {
+                            ChartPastel chart = (ChartPastel) executable;
+                            if(chart.getDataPastel().get(chart.getDataPastel().size()-1).getLabel() == null){
+                                //cuando ya esta inicializada
+                                chart.getDataPastel().get(chart.getDataPastel().size()-1).setLabel(l);
+                                chart.getDataPastel().get(chart.getDataPastel().size()-1).setValue(n);
+                            } else {
+                                DataPastel data = new DataPastel();
+                                data.setLabel(l);
+                                data.setValue(n);
+                                chart.getDataPastel().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException e){
+                        addSemanticError(lableft, labright, lab, e.toString());
+                    }    
+                :}
+                ;
+optional_color_pie ::= COMA COLOR TWO_DOTS HEX_COLOR:c 
+                {:
+                    try{
+                        if(executable == null){
+                            executable = new ChartPastel();
+                        }
+                        ChartPastel chart = (ChartPastel) executable;
+                        DataPastel data = new DataPastel();
+                        data.setColor(c);
+                        chart.getDataPastel().add(data);
+                    } catch(NullPointerException | ClassCastException e){
+                        addSemanticError(cleft, cright, c, e.toString());
+                    }
+                :}
+                
                 | /* empty */
                 ;
 
@@ -366,48 +493,64 @@ internal_block ::= chart_creation
 
 /*--------------VARIABLES -------------------*/
 variable_statement ::= VARIABLE:v asignation:a                  {: globalSymbolTable.put(v, a); :}
-    | VARIABLE PLUS_PLUS
-    | VARIABLE MINUS_MINUS
-    | VARIABLE PLUS_EQUALS numeric_data
-    | VARIABLE MINUS_EQUALS numeric_data
-    | VARIABLE TIMES_EQUALS numeric_data
-    | VARIABLE DIV_EQUALS numeric_data
+    | VARIABLE:v PLUS_PLUS  {: if(globalSymbolTable.containsKey(v) && 
+                                ((globalSymbolTable.get(v) instanceof Float) || globalSymbolTable.get(v) instanceof Integer)){
+                                    Object valueObject = globalSymbolTable.get(v);
+                                    if(valueObject instanceof Integer){
+                                        Integer value = (Integer) valueObject;
+                                        globalSymbolTable.put(v, value + value);
+                                    } else {
+                                        Float value = (Float) valueObject;
+                                        globalSymbolTable.put(v, value + value);
+                                    }
+                                } else {
+
+                                }
+                            :}
+    | VARIABLE MINUS_MINUS  {: 
+                            :}
+    | VARIABLE:v PLUS_EQUALS numeric_data:n     {:
+
+                                                :}
+    | VARIABLE:v MINUS_EQUALS numeric_data:n
+    | VARIABLE:v TIMES_EQUALS numeric_data:n
+    | VARIABLE:v DIV_EQUALS numeric_data:n
     ;
 
 asignation  ::= ASIGNATOR possible_values:v                     {: RESULT=v; :} ;
 possible_values ::= pure_numeric_data:n                         {: RESULT=n; :}
         | pure_numeric_data:n1 PLUS numeric_data:n2             {: RESULT=n1+n2; :}
-		| pure_numeric_data:n1 MINUS numeric_data:n2    {: RESULT=n1-n2; :}
-		| pure_numeric_data:n1 DIV numeric_data:n2      {: if(n2 != 0){
+	| pure_numeric_data:n1 MINUS numeric_data:n2    {: RESULT=n1-n2; :}
+	| pure_numeric_data:n1 DIV numeric_data:n2      {: if(n2 != 0){
                                                                         RESULT=n1/n2 ;
                                                                     } else {
                                                                         addSemanticError(n2left, n2right, n2, "Diviendo entre 0, no se puedo operar");
                                                                     }
                                                                 :}
-		| pure_numeric_data:n1 TIMES numeric_data:n2    {: RESULT=n1*n2; :}
-		| pure_numeric_data PLUS_EQUALS numeric_data
-		| pure_string_data:s                            {: RESULT=s; :}
-		| pure_boolean_data:b                           {: RESULT=b; :}
-		| VARIABLE
-		| VARIABLE PLUS numeric_data
-		| VARIABLE MINUS numeric_data
-		| VARIABLE DIV numeric_data
-		| VARIABLE TIMES numeric_data
-		| VARIABLE PLUS_EQUALS numeric_data
-		;
+	| pure_numeric_data:n1 TIMES numeric_data:n2    {: RESULT=n1*n2; :}
+	| pure_numeric_data PLUS_EQUALS numeric_data
+	| pure_string_data:s                            {: RESULT=s; :}
+	| pure_boolean_data:b                           {: RESULT=b; :}
+	| VARIABLE
+	| VARIABLE PLUS numeric_data
+	| VARIABLE MINUS numeric_data
+	| VARIABLE DIV numeric_data
+	| VARIABLE TIMES numeric_data
+	| VARIABLE PLUS_EQUALS numeric_data
+	;
 
 /*--------------CONDICIONALES -------------------*/
-condition ::= pure_boolean_data EQUALS boolean_data
-	| pure_boolean_data DIFFERENT boolean_data
-        | pure_string_data EQUALS string_data
-	| pure_string_data DIFFERENT string_data
-	| pure_numeric_data EQUALS numeric_data
-        | pure_numeric_data DIFFERENT numeric_data
-        | pure_numeric_data MAYOR numeric_data
-        | pure_numeric_data MAYOR_EQUALS numeric_data
-        | pure_numeric_data MENOR numeric_data
-        | pure_numeric_data MENOR_EQUALS numeric_data
-        | VARIABLE EQUALS pure_string_data
+condition ::= pure_boolean_data:b1 EQUALS boolean_data:b2   {: RESULT=(b1 == b2);:}
+	| pure_boolean_data:b1 DIFFERENT boolean_data:b2    {: RESULT=(b1 != b2);:}
+        | pure_string_data:s1 EQUALS string_data:s2         {: RESULT=(s1.equals(s2));:}
+	| pure_string_data:s1 DIFFERENT string_data:s2      {: RESULT=!(s1.equals(s2));:}
+	| pure_numeric_data:n1 EQUALS numeric_data:n2       {: RESULT=(n1==n2);   :}           
+        | pure_numeric_data:n1 DIFFERENT numeric_data:n2    {: RESULT=(n1!=n2);   :}
+        | pure_numeric_data:n1 MAYOR numeric_data:n2        {: RESULT=(n1>n2);   :}
+        | pure_numeric_data:n1 MAYOR_EQUALS numeric_data:n2 {: RESULT=(n1>=n2);   :}
+        | pure_numeric_data:n1 MENOR numeric_data:n2        {: RESULT=(n1<n2);   :}
+        | pure_numeric_data:n1 MENOR_EQUALS numeric_data:n2 {: RESULT=(n1<=n2);   :}
+        | VARIABLE:s EQUALS pure_string_data:n              {: :}
         | VARIABLE EQUALS pure_numeric_data
         | VARIABLE EQUALS VARIABLE
         | VARIABLE EQUALS pure_boolean_data

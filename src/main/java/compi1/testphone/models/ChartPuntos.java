@@ -11,9 +11,9 @@ import lombok.Setter;
  * @author yenni
  */
 @Getter @Setter
-public class ChartBarras extends DataContainer{
-    List<DataBarras> dataBarras = new ArrayList<>();
-    public ChartBarras(){
-        dataBarras = new ArrayList<>();
+public class ChartPuntos {
+    List<DataPuntos> dataPuntos;
+    public ChartPuntos(){
+        dataPuntos= new ArrayList<>();
     }
 }

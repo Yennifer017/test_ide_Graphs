@@ -12,8 +12,9 @@ import lombok.Setter;
  * @author yenni
  */
 @Getter @Setter
-public abstract class DataContainer extends Executable{
-    Leyenda leyenda;
+public class DataPastel {
+    String label;
+    Float value;
+    String color;
     
-            
 }

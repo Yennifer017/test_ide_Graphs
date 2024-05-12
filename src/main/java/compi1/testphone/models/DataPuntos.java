@@ -4,10 +4,17 @@
  */
 package compi1.testphone.models;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  *
  * @author yenni
  */
-public class Executables {
+@Getter @Setter
+public class DataPuntos {
+    private float xData, yData;
+    private int size;
+    private String color;
     
 }

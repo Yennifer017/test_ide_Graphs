@@ -16,6 +16,6 @@ public class Leyenda {
     String title;
     String xAxisLabel;
     String yAxisLabel;
-    int legendPosition = 0;
+    String legendPosition;
     
 }

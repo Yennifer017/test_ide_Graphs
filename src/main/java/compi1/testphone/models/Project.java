@@ -17,7 +17,7 @@ import lombok.Setter;
 public class Project {
     private String title, description, header, footer, backgroundColor, fontFamilyS, fontSizeS;
     private List<String> keyWords;
-    private List<DataContainer> data;
+    private List<Executable> data;
 
     public Project() {
         keyWords = new ArrayList<>();
