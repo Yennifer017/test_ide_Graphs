@@ -62,6 +62,50 @@ public class TestPhone {
                               "legendPosition": "bottom"
                             }
                           }
+                          {
+                            "data": [
+                              { "label": "A", "value": 30 },
+                              { "label": "B", "value": 50 },
+                              { "label": "C", "value": 20 }
+                            ]
+                          }
+                          {
+                            "data": [
+                              { "x": 10, "y": 20 },
+                              { "x": 30, "y": 40 },
+                              { "x": 50, "y": 60 },
+                              { "x": 70, "y": 80 },
+                              { "x": 90, "y": 100 }
+                            ]
+                          }
+                          {
+                            "data": [
+                              { "x": 10, "y": 20, "size": 5, "color": "#ff5733" },
+                              { "x": 30, "y": 40, "size": 8, "color": "#33ff57" },
+                              { "x": 50, "y": 60, "size": 10, "color": "#5733ff" },
+                              { "x": 70, "y": 80, "size": 6, "color": "#ffff33" },
+                              { "x": 90, "y": 100, "size": 7, "color": "#33ffff" }
+                            ],
+                            "chart": {
+                              "title": "Gráfico de Puntos",
+                              "xAxisLabel": "Eje X",
+                              "yAxisLabel": "Eje Y"
+                            }
+                          }
+                          {
+                            "data": [
+                              { "x": 10, "y": 20, "size": 5 },
+                              { "x": 30, "y": 40 },
+                              { "x": 50, "y": 60, "size": 10, "color": "#5733ff" },
+                              { "x": 70, "y": 80, "size": 6, "color": "#ffff33" },
+                              { "x": 90, "y": 100, "color": "#33ffff" }
+                            ],
+                            "chart": {
+                              "title": "Gráfico de Puntos",
+                              "xAxisLabel": "Eje X",
+                              "yAxisLabel": "Eje Y"
+                            }
+                          }
                           """;
         Lexer lexer = new Lexer(new StringReader(content));
         parser parser = new parser(lexer);

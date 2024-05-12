@@ -72,6 +72,8 @@ parser code {:
                         METODOS DE ERROR
     ------------------------------------------------------*/
     private final String NO_VAR_FOUND = "No se ha definido la variable";
+    private final String INCORRECT_TYPE_VAR = "El valor de la variable no pudo ser convertida al tipo adecuado";
+
     public void syntax_error(Symbol cur_token) {
         String mss = "Simbolo: " + symbl_name_from_id(cur_token.sym)
                     + ", linea: " + cur_token.left
@@ -157,35 +159,67 @@ pure_boolean_data ::= TRUE_B:t      {: RESULT=t; :}
 		;
 
 boolean_data ::= pure_boolean_data:b    {: RESULT=b; :}
-		| VARIABLE:v            {: 
-                                            if(globalSymbolTable.containsKey(v) && (globalSymbolTable.get(v) instanceof Boolean)){
-                                                RESULT = (Boolean) globalSymbolTable.get(v);
-                                            } else {
-                                                addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                                                RESULT = false;
-                                            }
-                                        :}
-		;
+        | VARIABLE:v    
+                {: 
+                    if(globalSymbolTable.containsKey(v)){
+                        if(globalSymbolTable.get(v) instanceof Boolean){
+                            addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                            RESULT = (Boolean) globalSymbolTable.get(v);
+                        } else {
+                            RESULT=false;
+                        }
+                    } else {
+                        addSemanticError(vleft, vright, v, NO_VAR_FOUND);
+                        RESULT = false;
+                    }
+                :}
+        ;
 
 pure_numeric_data ::= INTEGER:e         {: RESULT= Float.valueOf(e); :}
 		| FLOAT:e1              {: RESULT=e1; :}
 		;
 
 numeric_data ::= pure_numeric_data:n    {: RESULT=n; :}
-		| VARIABLE:v            {: 
-                                            if(globalSymbolTable.containsKey(v) 
-                            && ((globalSymbolTable.get(v) instanceof Float) || (globalSymbolTable.get(v) instanceof Integer))){
-                                                RESULT = (Float) globalSymbolTable.get(v);
-                                            } else {
-                                                addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                                                RESULT = 0F;
-                                            }
-                                        :}
-		;
+	| VARIABLE:v    
+            {: 
+                if(globalSymbolTable.containsKey(v)){
+                    if((globalSymbolTable.get(v) instanceof Float) || (globalSymbolTable.get(v) instanceof Integer)){
+                        RESULT = (Float) globalSymbolTable.get(v);
+                    }else {
+                        addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                        RESULT=0F;
+                    }
+                } else {
+                    addSemanticError(vleft, vright, v, NO_VAR_FOUND);
+                    RESULT = 0F;
+                }
+            :}
+	;
 
-numeric_integer_data ::= INTEGER
-		| VARIABLE
-		;
+numeric_integer_data ::= INTEGER:n      {: RESULT=n; :}
+        | VARIABLE:v
+            {:
+                if(globalSymbolTable.containsKey(v)){
+                    Object var = globalSymbolTable.get(v);
+                    if(var instanceof Integer){
+                        RESULT = (Integer) var;
+                    } else if (var instanceof Float){
+                        Float floatVar = (Float) var;
+                        if(floatVar == Math.floor(floatVar)){
+                            Integer value = (int) floatVar.floatValue();
+                            RESULT = value ;
+                        } else {
+                            addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                        }
+                    } else {
+                        addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                    }
+                } else {
+                    addSemanticError(vleft, vright, v, NO_VAR_FOUND);
+                    RESULT = 0;
+                }
+            :}
+        ;
 
 pure_string_data ::= STRING:s           {: RESULT=s; :}
 		| align_specification:a {: RESULT=a; :}
@@ -372,7 +406,7 @@ optional_color_b ::= COMA COLOR TWO_DOTS HEX_COLOR:c
                         DataBarras data = new DataBarras();
                         data.setColor(c);
                         chart.getDataBarras().add(data);
-                    } catch(NullPointerException | ClassCastException e){
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
                         addSemanticError(cleft, cright, c, e.toString());
                     }
                 :}
@@ -408,7 +442,7 @@ value_chart_pie ::= LABEL:lab TWO_DOTS string_data:l COMA VALUE TWO_DOTS numeric
                                 chart.getDataPastel().add(data);
                             }
                         }
-                    } catch(NullPointerException | ClassCastException e){
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
                         addSemanticError(lableft, labright, lab, e.toString());
                     }    
                 :}
@@ -423,7 +457,7 @@ optional_color_pie ::= COMA COLOR TWO_DOTS HEX_COLOR:c
                         DataPastel data = new DataPastel();
                         data.setColor(c);
                         chart.getDataPastel().add(data);
-                    } catch(NullPointerException | ClassCastException e){
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
                         addSemanticError(cleft, cright, c, e.toString());
                     }
                 :}
@@ -437,15 +471,91 @@ more_values_points ::= COMA LLAVE_L value_chart_points more_values_points
 		| /* empty */
 		;
 
-value_chart_points ::= X_DATA TWO_DOTS numeric_data COMA Y_DATA TWO_DOTS numeric_data optional_point_c_data LLAVE_R    ;
+value_chart_points ::= X_DATA:inf TWO_DOTS numeric_data:x COMA Y_DATA TWO_DOTS numeric_data:y optional_point_c_data LLAVE_R
+                {:
+                    try{
+                        if(executable == null){
+                            executable = new ChartPuntos();
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            DataPuntos data = new DataPuntos();
+                            data.setXData(x);
+                            data.setYData(y);
+                            chart.getDataPuntos().add(data);
+                        } else {
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            if(chart.getDataPuntos().get(chart.getDataPuntos().size()-1).getXData() < 0){
+                                //cuando ya esta inicializada
+                                chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setXData(x);
+                                chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setYData(y);
+                            } else {
+                                DataPuntos data = new DataPuntos();
+                                data.setXData(x);
+                                data.setYData(y);
+                                chart.getDataPuntos().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                        addSemanticError(infleft, infright, inf, e.toString());
+                    }
+
+                :}
+            ;
 
 optional_point_c_data ::= COMA options_pointc optional_point_c_data
 		| /* empty */
 		;
 
-options_pointc ::= SIZE TWO_DOTS numeric_integer_data
-		| COLOR TWO_DOTS HEX_COLOR
-		;
+options_pointc ::= SIZE:s TWO_DOTS numeric_integer_data:n
+                {:
+                    try{
+                        if(executable == null){
+                            executable = new ChartPuntos();
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            DataPuntos data = new DataPuntos();
+                            data.setSize(n);
+                            chart.getDataPuntos().add(data);
+                        } else {
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
+                                //ya se creo la dada, agregando
+                                chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setSize(n);    
+                            } else {
+                                //se debe inicializar una nueva data
+                                DataPuntos data = new DataPuntos();
+                                data.setSize(n);
+                                chart.getDataPuntos().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                        addSemanticError(sleft, sright, s, e.toString());
+                    }
+                :}
+            | COLOR:cs TWO_DOTS HEX_COLOR:c
+                {:
+                    try{
+                        if(executable == null){
+                            executable = new ChartPuntos();
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            DataPuntos data = new DataPuntos();
+                            data.setColor(c);
+                            chart.getDataPuntos().add(data);
+                        } else {
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
+                                //ya se creo la dada, agregando
+                                chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setColor(c);    
+                            } else {
+                                //se debe inicializar una nueva data
+                                DataPuntos data = new DataPuntos();
+                                data.setColor(c);
+                                chart.getDataPuntos().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                        addSemanticError(csleft, csright, cs, e.toString());
+                    }
+                :}
+            ;
 
 
 /*****************  GRAFICA DE LINEAS   ***********************/

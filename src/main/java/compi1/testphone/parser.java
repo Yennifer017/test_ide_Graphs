@@ -751,6 +751,8 @@ public class parser extends java_cup.runtime.lr_parser {
                         METODOS DE ERROR
     ------------------------------------------------------*/
     private final String NO_VAR_FOUND = "No se ha definido la variable";
+    private final String INCORRECT_TYPE_VAR = "El valor de la variable no pudo ser convertida al tipo adecuado";
+
     public void syntax_error(Symbol cur_token) {
         String mss = "Simbolo: " + symbl_name_from_id(cur_token.sym)
                     + ", linea: " + cur_token.left
@@ -924,13 +926,18 @@ class CUP$parser$actions {
 		int vright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		String v = (String)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 
-                                            if(globalSymbolTable.containsKey(v) && (globalSymbolTable.get(v) instanceof Boolean)){
-                                                RESULT = (Boolean) globalSymbolTable.get(v);
-                                            } else {
-                                                addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                                                RESULT = false;
-                                            }
-                                        
+                    if(globalSymbolTable.containsKey(v)){
+                        if(globalSymbolTable.get(v) instanceof Boolean){
+                            addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                            RESULT = (Boolean) globalSymbolTable.get(v);
+                        } else {
+                            RESULT=false;
+                        }
+                    } else {
+                        addSemanticError(vleft, vright, v, NO_VAR_FOUND);
+                        RESULT = false;
+                    }
+                
               CUP$parser$result = parser.getSymbolFactory().newSymbol("boolean_data",66, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -979,14 +986,18 @@ class CUP$parser$actions {
 		int vright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		String v = (String)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 
-                                            if(globalSymbolTable.containsKey(v) 
-                            && ((globalSymbolTable.get(v) instanceof Float) || (globalSymbolTable.get(v) instanceof Integer))){
-                                                RESULT = (Float) globalSymbolTable.get(v);
-                                            } else {
-                                                addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                                                RESULT = 0F;
-                                            }
-                                        
+                if(globalSymbolTable.containsKey(v)){
+                    if((globalSymbolTable.get(v) instanceof Float) || (globalSymbolTable.get(v) instanceof Integer)){
+                        RESULT = (Float) globalSymbolTable.get(v);
+                    }else {
+                        addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                        RESULT=0F;
+                    }
+                } else {
+                    addSemanticError(vleft, vright, v, NO_VAR_FOUND);
+                    RESULT = 0F;
+                }
+            
               CUP$parser$result = parser.getSymbolFactory().newSymbol("numeric_data",69, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -995,7 +1006,10 @@ class CUP$parser$actions {
           case 15: // numeric_integer_data ::= INTEGER 
             {
               Integer RESULT =null;
-
+		int nleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int nright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Integer n = (Integer)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT=n; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("numeric_integer_data",68, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1004,7 +1018,30 @@ class CUP$parser$actions {
           case 16: // numeric_integer_data ::= VARIABLE 
             {
               Integer RESULT =null;
-
+		int vleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int vright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		String v = (String)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		
+                if(globalSymbolTable.containsKey(v)){
+                    Object var = globalSymbolTable.get(v);
+                    if(var instanceof Integer){
+                        RESULT = (Integer) var;
+                    } else if (var instanceof Float){
+                        Float floatVar = (Float) var;
+                        if(floatVar == Math.floor(floatVar)){
+                            Integer value = (int) floatVar.floatValue();
+                            RESULT = value ;
+                        } else {
+                            addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                        }
+                    } else {
+                        addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
+                    }
+                } else {
+                    addSemanticError(vleft, vright, v, NO_VAR_FOUND);
+                    RESULT = 0;
+                }
+            
               CUP$parser$result = parser.getSymbolFactory().newSymbol("numeric_integer_data",68, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1736,7 +1773,7 @@ class CUP$parser$actions {
                         DataBarras data = new DataBarras();
                         data.setColor(c);
                         chart.getDataBarras().add(data);
-                    } catch(NullPointerException | ClassCastException e){
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
                         addSemanticError(cleft, cright, c, e.toString());
                     }
                 
@@ -1815,7 +1852,7 @@ class CUP$parser$actions {
                                 chart.getDataPastel().add(data);
                             }
                         }
-                    } catch(NullPointerException | ClassCastException e){
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
                         addSemanticError(lableft, labright, lab, e.toString());
                     }    
                 
@@ -1839,7 +1876,7 @@ class CUP$parser$actions {
                         DataPastel data = new DataPastel();
                         data.setColor(c);
                         chart.getDataPastel().add(data);
-                    } catch(NullPointerException | ClassCastException e){
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
                         addSemanticError(cleft, cright, c, e.toString());
                     }
                 
@@ -1887,7 +1924,42 @@ class CUP$parser$actions {
           case 91: // value_chart_points ::= X_DATA TWO_DOTS numeric_data COMA Y_DATA TWO_DOTS numeric_data optional_point_c_data LLAVE_R 
             {
               Object RESULT =null;
+		int infleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-8)).left;
+		int infright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-8)).right;
+		Object inf = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-8)).value;
+		int xleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-6)).left;
+		int xright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-6)).right;
+		Float x = (Float)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-6)).value;
+		int yleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int yright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Float y = (Float)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		
+                    try{
+                        if(executable == null){
+                            executable = new ChartPuntos();
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            DataPuntos data = new DataPuntos();
+                            data.setXData(x);
+                            data.setYData(y);
+                            chart.getDataPuntos().add(data);
+                        } else {
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            if(chart.getDataPuntos().get(chart.getDataPuntos().size()-1).getXData() < 0){
+                                //cuando ya esta inicializada
+                                chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setXData(x);
+                                chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setYData(y);
+                            } else {
+                                DataPuntos data = new DataPuntos();
+                                data.setXData(x);
+                                data.setYData(y);
+                                chart.getDataPuntos().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                        addSemanticError(infleft, infright, inf, e.toString());
+                    }
 
+                
               CUP$parser$result = parser.getSymbolFactory().newSymbol("value_chart_points",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-8)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1914,7 +1986,36 @@ class CUP$parser$actions {
           case 94: // options_pointc ::= SIZE TWO_DOTS numeric_integer_data 
             {
               Object RESULT =null;
-
+		int sleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int sright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Object s = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int nleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int nright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Integer n = (Integer)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		
+                    try{
+                        if(executable == null){
+                            executable = new ChartPuntos();
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            DataPuntos data = new DataPuntos();
+                            data.setSize(n);
+                            chart.getDataPuntos().add(data);
+                        } else {
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
+                                //ya se creo la dada, agregando
+                                chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setSize(n);    
+                            } else {
+                                //se debe inicializar una nueva data
+                                DataPuntos data = new DataPuntos();
+                                data.setSize(n);
+                                chart.getDataPuntos().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                        addSemanticError(sleft, sright, s, e.toString());
+                    }
+                
               CUP$parser$result = parser.getSymbolFactory().newSymbol("options_pointc",36, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1923,7 +2024,36 @@ class CUP$parser$actions {
           case 95: // options_pointc ::= COLOR TWO_DOTS HEX_COLOR 
             {
               Object RESULT =null;
-
+		int csleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int csright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Object cs = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int cleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int cright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		String c = (String)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		
+                    try{
+                        if(executable == null){
+                            executable = new ChartPuntos();
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            DataPuntos data = new DataPuntos();
+                            data.setColor(c);
+                            chart.getDataPuntos().add(data);
+                        } else {
+                            ChartPuntos chart = (ChartPuntos) executable;
+                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
+                                //ya se creo la dada, agregando
+                                chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setColor(c);    
+                            } else {
+                                //se debe inicializar una nueva data
+                                DataPuntos data = new DataPuntos();
+                                data.setColor(c);
+                                chart.getDataPuntos().add(data);
+                            }
+                        }
+                    } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                        addSemanticError(csleft, csright, cs, e.toString());
+                    }
+                
               CUP$parser$result = parser.getSymbolFactory().newSymbol("options_pointc",36, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;

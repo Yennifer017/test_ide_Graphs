@@ -17,4 +17,9 @@ public class DataPuntos {
     private int size;
     private String color;
     
+    public DataPuntos(){
+        xData = -1;
+        yData = -1;
+    }
+    
 }
