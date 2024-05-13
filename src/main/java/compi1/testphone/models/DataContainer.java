@@ -13,7 +13,5 @@ import lombok.Setter;
  */
 @Getter @Setter
 public abstract class DataContainer extends Executable{
-    Leyenda leyenda;
-    
-            
+    Leyenda leyenda;        
 }

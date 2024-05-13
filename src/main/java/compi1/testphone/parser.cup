@@ -20,7 +20,10 @@ parser code {:
 
     private Executable executable;
     private List<Executable> executablesList;
+    private List<Point> pointsList;
     private Leyenda leyenda;
+    private DataLineas dataLineas;
+    private ChartLineas chartLineas;
 
 
     //conect the parser with the lexer
@@ -32,6 +35,7 @@ parser code {:
 
         leyenda = new Leyenda();
         executablesList = new ArrayList<>();
+        pointsList = new ArrayList<>();
     }
 
     //getters
@@ -126,20 +130,24 @@ non terminal            instruction, code_inst, more_code, with_llaves,
                         chart_barras, more_values_barras, value_chart_barras, optional_color_b,
                         chart_pie, more_values_pie, value_chart_pie, optional_color_pie,
                         chart_points, more_values_points, value_chart_points, optional_point_c_data, options_pointc,
-                        chart_lines, more_values_lines, value_chart_lines, more_specific_data_line,
-                            specific_data_line, optional_data_lines,
+                        chart_lines, more_values_lines, more_specific_data_line,
                             optional_values_lines, optional_attribute_linec,
                         statement,
-                        possible_values,
-                        if_block, if_stmt,
-                        for_block, for_stmt, variable_definition, optional_increment,
-                        while_block, while_statement,
+                        if_block,
+                        for_block, 
+                        while_block,
                         do_while_block
                         ;
+
+non terminal Point          optional_data_lines, specific_data_line;
+non terminal DataLineas     value_chart_lines;
 non terminal List<Executable>   internal_block, else_block;
-non terminal Executable chart_creation;
-non terminal Asignation    variable_statement;
-non terminal MutableValue   condition, numeric_operable_data, asignation;
+non terminal IfStmt         if_stmt;
+non terminal ForStmt        for_stmt;
+non terminal MutableValue   while_statement;
+non terminal Executable     chart_creation;
+non terminal Asignation     variable_statement, variable_definition, optional_increment;
+non terminal MutableValue   condition, numeric_operable_data, asignation, possible_values;
 non terminal Symbol     align_specification, lines_style_attr, string_data, boolean_data, 
                         numeric_integer_data, numeric_data, color_data;
 non terminal Symbol     pure_string_data;
@@ -345,9 +353,6 @@ chart_creation ::= LLAVE_L:l elements_chart LLAVE_R
                     RESULT = executable;
                     executable = null;
                     leyenda = new Leyenda();
-                    //System.out.println(RESULT + "el result desde chart_creation");
-                } else {
-                    System.out.println("el executable es null desde chart_creation");
                 }
             :}
 
@@ -612,29 +617,64 @@ options_pointc ::= SIZE:s TWO_DOTS numeric_operable_data:n
 
 
 /*****************  GRAFICA DE LINEAS   ***********************/
-chart_lines ::= value_chart_lines more_values_lines ;
-more_values_lines ::= COMA LLAVE_L value_chart_lines
-		| /* empty */
-		;
+chart_lines ::= value_chart_lines:d more_values_lines 
+            {:
+                if(chartLineas == null){
+                    chartLineas = new ChartLineas();
+                }
+                chartLineas.getDataLineas().add(0,d);
+                executable = chartLineas;
+                chartLineas = null;
+            :}
+        ;
+more_values_lines ::= COMA LLAVE_L value_chart_lines:d
+            {:
+                if(chartLineas == null){
+                    chartLineas = new ChartLineas();
+                }
+                chartLineas.getDataLineas().add(0, d);
+            :}
+	| /* empty */
+        ;
 
-value_chart_lines ::= NAME TWO_DOTS string_data:n COMA POINTS TWO_DOTS CORCHETE_L specific_data_line more_specific_data_line CORCHETE_R optional_values_lines LLAVE_R ;
+value_chart_lines ::= NAME TWO_DOTS string_data:n COMA POINTS TWO_DOTS CORCHETE_L specific_data_line:p more_specific_data_line CORCHETE_R optional_values_lines LLAVE_R 
+        {:
+            if(dataLineas == null){
+                dataLineas = new DataLineas();
+            }
+            dataLineas.setName(n);
+            pointsList.add(0, p);
+            dataLineas.setPoints(pointsList);
+            pointsList = new ArrayList<>();
+            RESULT = dataLineas;
+            dataLineas = null;
+        :}
+        ;
 
-more_specific_data_line ::= COMA specific_data_line more_specific_data_line
-		| /* empty */
+more_specific_data_line ::= COMA specific_data_line:p more_specific_data_line
+            {:
+                pointsList.add(0, p);
+            :}                
+	| /* empty */
 		;
 
 /*>>>>>>>>>>>>>>    DATOS   */
-specific_data_line ::= LLAVE_L X_DATA TWO_DOTS numeric_operable_data:x COMA Y_DATA TWO_DOTS  numeric_operable_data:y optional_data_lines LLAVE_R ;
+specific_data_line ::= LLAVE_L X_DATA TWO_DOTS numeric_operable_data:x COMA Y_DATA TWO_DOTS  numeric_operable_data:y optional_data_lines:point LLAVE_R 
+            {:
+                if(point == null){
+                    point = new Point();
+                }
+                point.setXData(x);
+                point.setYData(y);
+                RESULT = point;
+            :}
+        ;
 
 optional_data_lines ::= COMA LABEL TWO_DOTS string_data:l
             {:
-                try{
-                    if(executable == null){
-                        //HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                    } else if()
-                } catch (NullPointerException | ClassCastException | IndexOutOfBoundsException e){
-                    addSemanticError(csleft, csright, cs, e.toString());
-                }
+                Point point = new Point();
+                point.setLabel(l);
+                RESULT = point;
             :}
 	| /* empty */
 	;
@@ -643,9 +683,29 @@ optional_data_lines ::= COMA LABEL TWO_DOTS string_data:l
 optional_values_lines ::= COMA optional_attribute_linec optional_values_lines
 		| /* empty */
 		;
-optional_attribute_linec ::= COLOR TWO_DOTS HEX_COLOR
-		| LINE_STYLE TWO_DOTS lines_style_attr
-		;
+optional_attribute_linec ::= COLOR:cs TWO_DOTS color_data:c
+            {:
+                try{
+                    if(dataLineas == null){
+                        dataLineas = new DataLineas();
+                    }
+                    dataLineas.setColor(c);
+                } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                    addSemanticError(csleft, csright, cs, e.toString());
+                }
+            :}
+	| LINE_STYLE:cs TWO_DOTS lines_style_attr:s
+            {:
+                try{
+                    if(dataLineas == null){
+                        dataLineas = new DataLineas();
+                    }
+                    dataLineas.setColor(s);
+                } catch(NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                    addSemanticError(csleft, csright, cs, e.toString());
+                }
+            :}
+	;
 
 
 /********************************************************
@@ -667,13 +727,18 @@ internal_block ::= chart_creation:e internal_block
                 //guardar en la lista
                 executablesList.add(0, e);
             }
+            RESULT=executablesList;
         :}
     | variable_statement:v internal_block
         {:
             //add the executable to the list
             executablesList.add(0, v);
+             RESULT=executablesList;
         :}
     | /* empty */
+        {:
+             RESULT=executablesList;
+        :}
     ;
 
 /*--------------VARIABLES -------------------*/
@@ -744,7 +809,9 @@ variable_statement ::= VARIABLE:v asignation:a
         :}
     ;
 
-asignation  ::= ASIGNATOR possible_values:v   ;
+asignation  ::= ASIGNATOR possible_values:v  
+            {: RESULT=v; :}
+        ;
 possible_values ::= pure_numeric_data:v
             {:  
                 MutableValue mutable = new MutableValue();
@@ -1015,10 +1082,19 @@ condition ::= pure_boolean_data:b1 EQUALS:o boolean_data:b2
         ;
 
 /*--------------IF INSTRUCTION -------------------*/
-if_block ::= if_stmt else_block:e  ;
-if_stmt ::= IF PARENTESIS_L condition:mutval PARENTESIS_R LLAVE_L internal_block LLAVE_R
+if_block ::= if_stmt:stm else_block:list 
             {:
-                
+                stm.setElseStmt(list);
+                project.getData().add(stm);
+            :} 
+            ;   
+if_stmt ::= IF PARENTESIS_L condition:mutval PARENTESIS_R LLAVE_L internal_block:list LLAVE_R
+            {:
+                IfStmt stmt = new IfStmt();
+                stmt.setExecutables(list);
+                stmt.setCondition(mutval);
+                RESULT = stmt;
+                executablesList = new ArrayList();
             :}
         ;
 
@@ -1031,19 +1107,62 @@ else_block ::= ELSE LLAVE_L internal_block:list LLAVE_R
 	;
 
 /*--------------FOR INSTRUCTION -------------------*/
-for_block ::= for_stmt LLAVE_L internal_block LLAVE_R   ;
-for_stmt ::= FOR PARENTESIS_L variable_definition DOT_COMA condition DOT_COMA optional_increment PARENTESIS_R ;
+for_block ::= for_stmt:stmt LLAVE_L internal_block:list LLAVE_R  
+            {:
+                stmt.setExecutables(list);
+                project.getData().add(stmt);
+                executablesList = new ArrayList();
+            :}
+        ;
+for_stmt ::= FOR PARENTESIS_L variable_definition:d DOT_COMA condition:c DOT_COMA optional_increment:inc PARENTESIS_R 
+            {:
+                ForStmt stmt  = new ForStmt();
+                stmt.setFirstAsign(d);
+                stmt.setIncrement(inc);
+                stmt.setCondition(c);
+                RESULT = stmt;
+            :}
+        ;
 
-variable_definition ::= VARIABLE asignation
-		| /* emtpy */
-		;
-optional_increment ::= variable_statement
-		| /* empty */
-		;
+variable_definition ::= VARIABLE:v asignation:a
+            {:
+                Asignation asign = new Asignation();
+                asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+                asign.setValue(a);
+                RESULT = asign;
+            :}
+        | /* emtpy */
+	;
+optional_increment ::= variable_statement:asign
+            {:
+                RESULT = asign;
+            :}
+	| /* empty */
+	;
 
 /*--------------WHILE INSTRUCTION -------------------*/
-while_block ::= while_statement LLAVE_L internal_block LLAVE_R  ;
-while_statement ::= WHILE PARENTESIS_L condition PARENTESIS_R   ;
+while_block ::= while_statement:mut LLAVE_L internal_block:list LLAVE_R  
+            {:
+                WhileStmt stmt = new WhileStmt();
+                stmt.setCondition(mut);
+                stmt.setExecutables(list);
+                project.getData().add(stmt);
+                executablesList = new ArrayList();
+            :}
+        ;
+while_statement ::= WHILE PARENTESIS_L condition:c PARENTESIS_R
+            {:
+                RESULT = c;
+            :}
+        ;
 
 /*--------------DO-WHILE INSTRUCTION -------------------*/
-do_while_block ::= DO LLAVE_L internal_block LLAVE_R while_statement DOT_COMA   ;
+do_while_block ::= DO LLAVE_L internal_block:list LLAVE_R while_statement:mut DOT_COMA   
+            {:
+                DoWhileStmt stmt = new DoWhileStmt();
+                stmt.setCondition(mut);
+                stmt.setExecutables(list);
+                project.getData().add(stmt);
+                executablesList = new ArrayList();
+            :}
+        ;

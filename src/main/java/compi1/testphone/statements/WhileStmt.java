@@ -16,14 +16,12 @@ import lombok.Setter;
  * @author yenni
  */
 @Getter @Setter
-public class IfStmt extends Statement{
+public class WhileStmt extends Statement {
     MutableValue condition;
     List<Executable> executables;
-    List<Executable> elseStmt;
-    
-    public IfStmt(){
+
+    public WhileStmt() {
         executables = new ArrayList<>();
-        elseStmt = new ArrayList<>();
     }
-           
+    
 }
