@@ -4,7 +4,6 @@ import java_cup.runtime.*;
 import java.util.*;
 
 //arreglar imports
-import java.util.HashMap;
 import compi1.testphone.models.*;
 import compi1.testphone.statements.*;
 
@@ -44,10 +43,6 @@ parser code {:
     }
     public List<String> getSyntaxErrors(){
         return this.syntaxErrors;
-    }
-
-    public List<String> getSemanticErrors(){
-        return this.semanticErrors;
     }
 
     public Project getProject(){
@@ -91,17 +86,23 @@ parser code {:
     }
 
     public void report_error(String message, Object info){
-        Symbol cur_token = (Symbol) info;
-        String mss = "Simbolo: " + symbl_name_from_id(cur_token.sym)
-                    + ", linea: " + cur_token.left
-                    + ", columna: " + cur_token.right
-                    + ", lexema: " + cur_token.value
-                    + ", Info: " + message;
-        syntaxErrors.add(mss);
+        try{
+            Symbol cur_token = (Symbol) info;
+            String mss = "Simbolo: " + symbl_name_from_id(cur_token.sym)
+                        + ", linea: " + cur_token.left
+                        + ", columna: " + cur_token.right
+                        + ", lexema: " + cur_token.value
+                        + ", Info: " + message;
+            syntaxErrors.add(mss);
+            syntaxErrors.add(mss);
+        } catch (Exception e){
+            syntaxErrors.add(message);
+        }
     }
 
     private void addSemanticError(int left, int right, Object value, String message){
-        semanticErrors.add(message + "-" + "linea:" + left + " columna:" + right + "-" + " Lexema=" + value);
+        //inesperated error! but im lazy and i didnt change the function name
+        syntaxErrors.add(message + "-" + "linea:" + left + " columna:" + right + "-" + " Lexema=" + value);
     }
 :}
 
@@ -301,7 +302,12 @@ code_inst ::= global_specification
                 }
             :}
         | statement
-		;
+        | error 
+            {: 
+                report_error("Se esperaba una creacion de grafica, una instruccion o una especificacion global", 
+                cur_err_token()); 
+            :}
+	;
 
 more_code ::= code_inst more_code
 		| /* empty */
@@ -361,6 +367,9 @@ elements_chart ::= leyend_chart_op DATA TWO_DOTS specification_data leyend_chart
         ;
 specification_data ::= data_chart
         | information_target
+        | error {: 
+                    report_error("Se esperaba la creacion de una grafica o una targeta", cur_err_token());
+                :}
         ;
 
 leyend_chart_op ::=  leyend_chart COMA  
@@ -368,6 +377,9 @@ leyend_chart_op ::=  leyend_chart COMA
 		;
 leyend_chart_op_f ::= COMA leyend_chart
 		| /*empty*/
+                | error leyend_chart {: 
+                            report_error("Se esperaba una leyenda o fin de creacion", cur_err_token());
+                        :}
 		;
 
 /*--------------LEYENDA PARA GRAFICAS -------------------*/
@@ -381,6 +393,7 @@ specification ::= TITLE TWO_DOTS string_data:d          {: leyenda.setTitle(d); 
 		;
 more_specifications ::= COMA specification more_specifications
 		| /* empty */
+                | error specification more_specifications {: report_error("Se esperaba una coma", cur_err_token()); :}
 		;
 
 /*----------------- TARJETA DE INFORMACION -------------------*/
@@ -409,6 +422,9 @@ data_target ::= VALUE TWO_DOTS numeric_operable_data:n       {:
                                                         InformationTarget infoT = getInformationTarget();
                                                         infoT.setLink(l);
                                                     :}
+                | error {: 
+                            report_error("Se esperaba una especificacion de targeta", cur_err_token());
+                        :}
 		;
 more_data_target ::= COMA data_target more_data_target  
                 | /* empty */;
@@ -418,7 +434,10 @@ data_chart ::= CORCHETE_L LLAVE_L specific_chart_data CORCHETE_R   ;
 specific_chart_data ::= chart_barras    
 		| chart_pie             
 		| chart_points          
-		| chart_lines           
+		| chart_lines 
+                | error {: 
+                            report_error("Se esperaba una especificaion de grafica", cur_err_token());
+                        :}
 		;
 
 /****************** GRAFICA DE BARRAS   *********************/
@@ -465,13 +484,19 @@ optional_color_b ::= COMA COLOR TWO_DOTS color_data:c
                         addSemanticError(cleft, cright, c, e.toString());
                     }
                 :}
-                | /* empty */ ;
+                | /* empty */ 
+                | error {: 
+                            report_error("Se esperaba especificar un color", cur_err_token());
+                        :};
 
 
 /****************** GRAFICA DE PASTEL   *********************/
 chart_pie ::= value_chart_pie more_values_pie   ;
 more_values_pie ::= COMA LLAVE_L value_chart_pie more_values_pie
 		| /* empty */
+                | error error error {: 
+                            report_error("Se esperaban mas datos de grafica de pastel", cur_err_token());
+                        :}
 		;
 
 value_chart_pie ::= LABEL:lab TWO_DOTS string_data:l COMA VALUE TWO_DOTS numeric_operable_data:n optional_color_pie LLAVE_R 
@@ -518,12 +543,18 @@ optional_color_pie ::= COMA COLOR TWO_DOTS color_data:c
                 :}
                 
                 | /* empty */
+                | error {: 
+                            report_error("Se esperaba especificar un color", cur_err_token());
+                        :}
                 ;
 
 /*****************  GRAFICA DE PUNTOS   ***********************/
 chart_points ::= value_chart_points more_values_points  ;
 more_values_points ::= COMA LLAVE_L value_chart_points more_values_points
 		| /* empty */
+                | error error error {: 
+                    report_error("Se esperaba mas datos para la grafica de puntos", cur_err_token());
+                :}
 		;
 
 value_chart_points ::= X_DATA:inf TWO_DOTS numeric_operable_data:x COMA Y_DATA TWO_DOTS numeric_operable_data:y optional_point_c_data LLAVE_R
@@ -635,6 +666,9 @@ more_values_lines ::= COMA LLAVE_L value_chart_lines:d
                 chartLineas.getDataLineas().add(0, d);
             :}
 	| /* empty */
+        | error error error {: 
+                    report_error("Se esperaban mas datos para el grafico de lineas", cur_err_token());
+                :}
         ;
 
 value_chart_lines ::= NAME TWO_DOTS string_data:n COMA POINTS TWO_DOTS CORCHETE_L specific_data_line:p more_specific_data_line CORCHETE_R optional_values_lines LLAVE_R 
@@ -656,7 +690,10 @@ more_specific_data_line ::= COMA specific_data_line:p more_specific_data_line
                 pointsList.add(0, p);
             :}                
 	| /* empty */
-		;
+        | error {: 
+                    report_error("Se esperaban mas datos de la grafica de lineas", cur_err_token());
+                :}
+	;
 
 /*>>>>>>>>>>>>>>    DATOS   */
 specific_data_line ::= LLAVE_L X_DATA TWO_DOTS numeric_operable_data:x COMA Y_DATA TWO_DOTS  numeric_operable_data:y optional_data_lines:point LLAVE_R 
@@ -900,6 +937,9 @@ possible_values ::= pure_numeric_data:v
                 mutable.getSymbols().add(n);
                 RESULT=mutable;
             :}
+        | error {: 
+                    report_error("Se esperaba un valor para asignar", cur_err_token());
+                :}
 	;
 
 /*--------------CONDICIONALES -------------------*/
@@ -1079,6 +1119,9 @@ condition ::= pure_boolean_data:b1 EQUALS:o boolean_data:b2
                 mutable.getSymbols().add(v2);
                 RESULT=mutable;
             :}
+        | error {: 
+                    report_error("Se esperaba una condicion ", cur_err_token());
+                :}
         ;
 
 /*--------------IF INSTRUCTION -------------------*/

@@ -42,13 +42,13 @@ public class TestPhone {
                               "yAxisLabel": "Eje Y"
                             }
                           }
-                          
+                         
                           """;
         Lexer lexer = new Lexer(new StringReader(content));
         parser parser = new parser(lexer);
         try {
             parser.parse();
-            if(lexer.getErrors().isEmpty() && parser.getSyntaxErrors().isEmpty() && parser.getSemanticErrors().isEmpty()){
+            if(lexer.getErrors().isEmpty() && parser.getSyntaxErrors().isEmpty()){
                 System.out.println("Se ha pasado la prueba");
             } else {
                 String output = "ERORES LEXICOS";
@@ -57,8 +57,6 @@ public class TestPhone {
                 output += "\n\nERRORES SINTACTICOS\n";
                 output += getErrors(parser.getSyntaxErrors());
                 
-                output += "\n\nERRORES SEMANTICOS\n";
-                output += getErrors(parser.getSemanticErrors());
                 System.out.println(output);
             }
         } catch (Exception e) {
