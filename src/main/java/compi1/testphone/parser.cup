@@ -88,6 +88,13 @@ parser code {:
         syntaxErrors.add("Errores de sintaxis severos detectados, revisa municiosamente el codigo");
     }
 
+    public void report_error(String message, Object info){
+        //HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+        Symbol err = (Symbol) info;
+        Token tokenError = (Token) err.value;
+        System.out.println("Error reportado: " + message + tokenError.toString()+ this.symbl_name_from_id(tokenError.getType()));
+    }
+
     private void addSemanticError(int left, int right, Object value, String message){
         semanticErrors.add(message + "-" + "linea:" + left + " columna:" + right + "-" + " Lexema=" + value);
     }
@@ -480,17 +487,20 @@ value_chart_points ::= X_DATA:inf TWO_DOTS numeric_data:x COMA Y_DATA TWO_DOTS n
                             DataPuntos data = new DataPuntos();
                             data.setXData(x);
                             data.setYData(y);
+                            data.setSaved(true);
                             chart.getDataPuntos().add(data);
                         } else {
                             ChartPuntos chart = (ChartPuntos) executable;
-                            if(chart.getDataPuntos().get(chart.getDataPuntos().size()-1).getXData() < 0){
+                            if(!chart.getDataPuntos().get(chart.getDataPuntos().size()-1).isSaved()){
                                 //cuando ya esta inicializada
                                 chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setXData(x);
                                 chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setYData(y);
+                                chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setSaved(true);
                             } else {
                                 DataPuntos data = new DataPuntos();
                                 data.setXData(x);
                                 data.setYData(y);
+                                data.setSaved(true);
                                 chart.getDataPuntos().add(data);
                             }
                         }
@@ -516,7 +526,7 @@ options_pointc ::= SIZE:s TWO_DOTS numeric_integer_data:n
                             chart.getDataPuntos().add(data);
                         } else {
                             ChartPuntos chart = (ChartPuntos) executable;
-                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
+                            if(!chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).isSaved()){
                                 //ya se creo la dada, agregando
                                 chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setSize(n);    
                             } else {
@@ -541,8 +551,8 @@ options_pointc ::= SIZE:s TWO_DOTS numeric_integer_data:n
                             chart.getDataPuntos().add(data);
                         } else {
                             ChartPuntos chart = (ChartPuntos) executable;
-                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
-                                //ya se creo la dada, agregando
+                            if(!chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).isSaved()){
+                                //ya se creo la data, agregando
                                 chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setColor(c);    
                             } else {
                                 //se debe inicializar una nueva data
@@ -564,7 +574,7 @@ more_values_lines ::= COMA LLAVE_L value_chart_lines
 		| /* empty */
 		;
 
-value_chart_lines ::= NAME TWO_DOTS string_data COMA POINTS TWO_DOTS CORCHETE_L  specific_data_line more_specific_data_line CORCHETE_R optional_values_lines LLAVE_R ;
+value_chart_lines ::= NAME TWO_DOTS string_data:n COMA POINTS TWO_DOTS CORCHETE_L specific_data_line more_specific_data_line CORCHETE_R optional_values_lines LLAVE_R ;
 
 more_specific_data_line ::= COMA specific_data_line more_specific_data_line
 		| /* empty */
@@ -573,9 +583,18 @@ more_specific_data_line ::= COMA specific_data_line more_specific_data_line
 /*>>>>>>>>>>>>>>    DATOS   */
 specific_data_line ::= LLAVE_L X_DATA TWO_DOTS numeric_data COMA Y_DATA TWO_DOTS  numeric_data optional_data_lines LLAVE_R ;
 
-optional_data_lines ::= COMA LABEL TWO_DOTS string_data
-		| /* empty */
-		;
+optional_data_lines ::= COMA LABEL TWO_DOTS string_data:l
+            {:
+                try{
+                    if(executable == null){
+                        //HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                    } else if()
+                } catch (NullPointerException | ClassCastException | IndexOutOfBoundsException e){
+                    addSemanticError(csleft, csright, cs, e.toString());
+                }
+            :}
+	| /* empty */
+	;
 
 /*>>>>>>>>>>>>>>>   OTROS ATRIBUTOS */
 optional_values_lines ::= COMA optional_attribute_linec optional_values_lines

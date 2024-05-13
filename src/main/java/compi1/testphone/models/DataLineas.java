@@ -4,6 +4,8 @@
  */
 package compi1.testphone.models;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,15 +14,12 @@ import lombok.Setter;
  * @author yenni
  */
 @Getter @Setter
-public class DataPuntos {
-    private float xData, yData;
-    private int size;
+public class DataLineas {
+    private String name;
     private String color;
-    private boolean saved;
-    
-    public DataPuntos(){
-        xData = -1;
-        yData = -1;
+    private String lineStyle;
+    private List<Point> points;
+    public DataLineas(){
+        points = new ArrayList<>();
     }
-    
 }

@@ -4,23 +4,20 @@
  */
 package compi1.testphone.models;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
  * @author yenni
  */
-@Getter @Setter
-public class DataPuntos {
-    private float xData, yData;
-    private int size;
-    private String color;
-    private boolean saved;
-    
-    public DataPuntos(){
-        xData = -1;
-        yData = -1;
+public class ChartLineas extends DataContainer{
+    private List<DataLineas> dataLineas;
+
+    public ChartLineas() {
+        dataLineas = new ArrayList<>();
     }
+    
+    
     
 }

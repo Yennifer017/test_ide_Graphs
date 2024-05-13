@@ -12,15 +12,12 @@ import lombok.Setter;
  * @author yenni
  */
 @Getter @Setter
-public class DataPuntos {
-    private float xData, yData;
-    private int size;
-    private String color;
-    private boolean saved;
+public class Point {
+    float xData;
+    float yData;
+    boolean saved;
+    String label;
     
-    public DataPuntos(){
-        xData = -1;
-        yData = -1;
+    public Point(){
     }
-    
 }

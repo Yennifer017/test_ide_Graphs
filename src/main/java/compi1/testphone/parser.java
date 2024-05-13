@@ -1941,17 +1941,20 @@ class CUP$parser$actions {
                             DataPuntos data = new DataPuntos();
                             data.setXData(x);
                             data.setYData(y);
+                            data.setSaved(true);
                             chart.getDataPuntos().add(data);
                         } else {
                             ChartPuntos chart = (ChartPuntos) executable;
-                            if(chart.getDataPuntos().get(chart.getDataPuntos().size()-1).getXData() < 0){
+                            if(!chart.getDataPuntos().get(chart.getDataPuntos().size()-1).isSaved()){
                                 //cuando ya esta inicializada
                                 chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setXData(x);
                                 chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setYData(y);
+                                chart.getDataPuntos().get(chart.getDataPuntos().size()-1).setSaved(true);
                             } else {
                                 DataPuntos data = new DataPuntos();
                                 data.setXData(x);
                                 data.setYData(y);
+                                data.setSaved(true);
                                 chart.getDataPuntos().add(data);
                             }
                         }
@@ -2002,7 +2005,7 @@ class CUP$parser$actions {
                             chart.getDataPuntos().add(data);
                         } else {
                             ChartPuntos chart = (ChartPuntos) executable;
-                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
+                            if(!chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).isSaved()){
                                 //ya se creo la dada, agregando
                                 chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setSize(n);    
                             } else {
@@ -2040,8 +2043,8 @@ class CUP$parser$actions {
                             chart.getDataPuntos().add(data);
                         } else {
                             ChartPuntos chart = (ChartPuntos) executable;
-                            if(chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).getXData() < 0){
-                                //ya se creo la dada, agregando
+                            if(!chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).isSaved()){
+                                //ya se creo la data, agregando
                                 chart.getDataPuntos().get(chart.getDataPuntos().size() - 1).setColor(c);    
                             } else {
                                 //se debe inicializar una nueva data
@@ -2089,6 +2092,9 @@ class CUP$parser$actions {
           case 99: // value_chart_lines ::= NAME TWO_DOTS string_data COMA POINTS TWO_DOTS CORCHETE_L specific_data_line more_specific_data_line CORCHETE_R optional_values_lines LLAVE_R 
             {
               Object RESULT =null;
+		int nleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-9)).left;
+		int nright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-9)).right;
+		String n = (String)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-9)).value;
 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("value_chart_lines",39, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-11)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
@@ -2125,7 +2131,14 @@ class CUP$parser$actions {
           case 103: // optional_data_lines ::= COMA LABEL TWO_DOTS string_data 
             {
               Object RESULT =null;
-
+		int lleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int lright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		String l = (String)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		
+                if(executable == null){
+                    //HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+                } 
+            
               CUP$parser$result = parser.getSymbolFactory().newSymbol("optional_data_lines",42, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
