@@ -4,6 +4,7 @@
  */
 package compi1.testphone.models;
 
+import java_cup.runtime.Symbol;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,7 +14,7 @@ import lombok.Setter;
  */
 @Getter @Setter
 public class DataBarras {
-    String category;
-    float value;
-    String color;
+    Symbol category;
+    MutableValue value;
+    Symbol color;
 }

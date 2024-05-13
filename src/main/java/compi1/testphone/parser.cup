@@ -67,6 +67,10 @@ parser code {:
         return (InformationTarget) executable;
     }
 
+    private Symbol symbol(int left, int right, Object value, int type){
+        return new Symbol(type, left, right, value);
+    }
+
 
     /*----------------------------------------------------
                         METODOS DE ERROR
@@ -90,9 +94,7 @@ parser code {:
 
     public void report_error(String message, Object info){
         //HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-        Symbol err = (Symbol) info;
-        Token tokenError = (Token) err.value;
-        System.out.println("Error reportado: " + message + tokenError.toString()+ this.symbl_name_from_id(tokenError.getType()));
+        System.out.println("error here");
     }
 
     private void addSemanticError(int left, int right, Object value, String message){
@@ -129,17 +131,18 @@ non terminal            instruction, code_inst, more_code, with_llaves,
                             specific_data_line, optional_data_lines,
                             optional_values_lines, optional_attribute_linec,
                         statement, internal_block,
-                        variable_statement, asignation, possible_values,
+                        asignation, possible_values,
                         if_block, if_stmt, else_block,
                         for_block, for_stmt, variable_definition, optional_increment,
                         while_block, while_statement,
                         do_while_block
                         ;
-
-non terminal String     align_specification, lines_style_attr, pure_string_data, string_data, all_acepted_data ;
-non terminal Boolean    pure_boolean_data, boolean_data, condition;
-non terminal Integer    numeric_integer_data    ;
-non terminal Float      numeric_data, pure_numeric_data ;
+non terminal MutableValue   condition, variable_statement, numeric_operable_data;
+non terminal Symbol     align_specification, lines_style_attr, string_data, boolean_data, 
+                        numeric_integer_data, numeric_data, color_data;
+non terminal Symbol     pure_string_data;
+non terminal Symbol     pure_boolean_data;
+non terminal Symbol     pure_numeric_data ;
 
 /*------------------------------------------------------
                      THE GRAMMAR
@@ -151,99 +154,127 @@ start with instruction;
                 ATRIBUTOS AGRUPADOS
 **********************************************************/
 
-align_specification ::= BOTTOM:b    {: RESULT=b; :}
-        | TOP:t                     {: RESULT=t; :}
-        | RIGHT:r                   {: RESULT=r; :}
-        | LEFT:l                    {: RESULT=l; :}
+align_specification ::= BOTTOM:v    {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
+        | TOP:v                     {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
+        | RIGHT:v                   {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
+        | LEFT:v                    {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
         ;
 
-lines_style_attr ::= DASHED_LINE:d  {: RESULT=d; :}
-		| SOLID_LINE:s      {: RESULT=s; :}
-		;
+lines_style_attr ::= DASHED_LINE:v  {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
+	| SOLID_LINE:v              {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
+	;
 
-pure_boolean_data ::= TRUE_B:t      {: RESULT=t; :}        
-		| FALSE_B:f         {: RESULT=f; :}
+pure_boolean_data ::= TRUE_B:v      {: RESULT=symbol(vleft, vright, v, sym.TRUE_B); :}        
+		| FALSE_B:v         {: RESULT=symbol(vleft, vright, v, sym.TRUE_B); :}
 		;
 
 boolean_data ::= pure_boolean_data:b    {: RESULT=b; :}
-        | VARIABLE:v    
-                {: 
-                    if(globalSymbolTable.containsKey(v)){
-                        if(globalSymbolTable.get(v) instanceof Boolean){
-                            addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
-                            RESULT = (Boolean) globalSymbolTable.get(v);
-                        } else {
-                            RESULT=false;
-                        }
-                    } else {
-                        addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                        RESULT = false;
-                    }
-                :}
+        | VARIABLE:v                    {: RESULT=symbol(vleft, vright, v, sym.VARIABLE); :}
         ;
 
-pure_numeric_data ::= INTEGER:e         {: RESULT= Float.valueOf(e); :}
-		| FLOAT:e1              {: RESULT=e1; :}
+pure_numeric_data ::= INTEGER:v         {: RESULT=symbol(vleft, vright, v, sym.INTEGER); :}
+		| FLOAT:v               {: RESULT=symbol(vleft, vright, v, sym.FLOAT); :}
 		;
 
-numeric_data ::= pure_numeric_data:n    {: RESULT=n; :}
-	| VARIABLE:v    
-            {: 
-                if(globalSymbolTable.containsKey(v)){
-                    if((globalSymbolTable.get(v) instanceof Float) || (globalSymbolTable.get(v) instanceof Integer)){
-                        RESULT = (Float) globalSymbolTable.get(v);
-                    }else {
-                        addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
-                        RESULT=0F;
-                    }
-                } else {
-                    addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                    RESULT = 0F;
-                }
-            :}
+numeric_data ::= pure_numeric_data:v    {: RESULT=v; :}
+	| VARIABLE:v                    {: RESULT=symbol(vleft, vright, v, sym.VARIABLE); :}
 	;
 
-numeric_integer_data ::= INTEGER:n      {: RESULT=n; :}
-        | VARIABLE:v
-            {:
-                if(globalSymbolTable.containsKey(v)){
-                    Object var = globalSymbolTable.get(v);
-                    if(var instanceof Integer){
-                        RESULT = (Integer) var;
-                    } else if (var instanceof Float){
-                        Float floatVar = (Float) var;
-                        if(floatVar == Math.floor(floatVar)){
-                            Integer value = (int) floatVar.floatValue();
-                            RESULT = value ;
-                        } else {
-                            addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
-                        }
-                    } else {
-                        addSemanticError(vleft, vright, v, INCORRECT_TYPE_VAR);
-                    }
-                } else {
-                    addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                    RESULT = 0;
-                }
-            :}
+numeric_integer_data ::= INTEGER:v      {: RESULT=symbol(vleft, vright, v, sym.INTEGER); :}
+        | VARIABLE:v                    {: RESULT=symbol(vleft, vright, v, sym.VARIABLE); :}
         ;
 
-pure_string_data ::= STRING:s           {: RESULT=s; :}
-		| align_specification:a {: RESULT=a; :}
-		| lines_style_attr:l    {: RESULT=l; :}
-		| HEX_COLOR:h           {: RESULT=h; :}
+pure_string_data ::= STRING:v           {: RESULT=symbol(vleft, vright, v, sym.STRING); :}
+		| align_specification:v {: RESULT=v; :}
+		| lines_style_attr:v    {: RESULT=v; :}
+		| HEX_COLOR:v           {: RESULT=symbol(vleft, vright, v, sym.HEX_COLOR); :}
 		;
 
 string_data ::= pure_string_data:s      {: RESULT=s; :}
-		| VARIABLE:v            {: 
-                                            if(globalSymbolTable.containsKey(v) && (globalSymbolTable.get(v) instanceof String)){
-                                                RESULT = (String) globalSymbolTable.get(v);
-                                            } else {
-                                                addSemanticError(vleft, vright, v, NO_VAR_FOUND);
-                                                RESULT = "";
-                                            }
-                                        :}
+		| VARIABLE:v            {: RESULT=symbol(vleft, vright, v, sym.VARIABLE); :}
 		;
+
+color_data ::= HEX_COLOR:v              {: RESULT=symbol(vleft, vright, v, sym.HEX_COLOR); :}            
+                | VARIABLE:v            {: RESULT=symbol(vleft, vright, v, sym.VARIABLE); :}
+                ;
+
+numeric_operable_data ::= pure_numeric_data:v           
+            {:  
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:n1 PLUS:o numeric_data:n2   
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.PLUS));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:n1 MINUS:o numeric_data:n2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MINUS));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:n1 DIV:o numeric_data:n2 
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIV));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:n1 TIMES:o numeric_data:n2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.TIMES));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v            
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                RESULT=mutable;
+            :}
+	| VARIABLE:v PLUS:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.PLUS));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v MINUS:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MINUS));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v DIV:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIV));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v TIMES:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.TIMES));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+        ;
 
 /********************************************************
                 INSTRUCCIONES GLOBALES
@@ -253,7 +284,22 @@ instruction ::= code_inst more_code
         ;
 
 code_inst ::= global_specification
-        | chart_creation
+        | chart_creation 
+                {:
+                        if(executable != null){ //save data
+                            if(executable instanceof DataContainer){
+                                DataContainer dataContainer = (DataContainer) executable;
+                                dataContainer.setLeyenda(leyenda);
+                            } else if (executable instanceof InformationTarget){
+                                InformationTarget infoT = (InformationTarget) executable;
+                                //infoT.setLine(dright);
+                                //infoT.setColumn(dleft);
+                            }
+                            project.getData().add(executable);
+                            executable = null;
+                            leyenda = new Leyenda();
+                        }
+                :}
         | statement
 		;
 
@@ -277,7 +323,7 @@ global_single_specification ::= TITLE TWO_DOTS string_data:d        {:project.se
 		| KEYWORDS TWO_DOTS keywords_specification
 		| HEADER TWO_DOTS LLAVE_L TITLE TWO_DOTS string_data:d LLAVE_R      {:project.setHeader(d); :}
 		| FOOTER TWO_DOTS LLAVE_L COPYRIGHT TWO_DOTS string_data:d LLAVE_R  {:project.setFooter(d); :}
-		| BACKGROUND TWO_DOTS HEX_COLOR:c                   {:project.setBackgroundColor(c); :}
+		| BACKGROUND TWO_DOTS color_data:c                  {:project.setBackgroundColor(c); :}
 		| FONT_FAMILY TWO_DOTS string_data:d                {:project.setFontFamilyS(d); :}
 		| FONT_SIZE TWO_DOTS string_data:d                  {:project.setFontSizeS(d); :}
 		;
@@ -295,22 +341,7 @@ more_key_words ::= COMA string_data:d more_key_words                {:project.ge
 /*solo una grafica*/
 chart_creation ::= LLAVE_L elements_chart LLAVE_R ;
 elements_chart ::= leyend_chart_op DATA:d TWO_DOTS specification_data leyend_chart_op_f 
-                    {:
-                        if(executable != null){ //save data
-                            if(executable instanceof DataContainer){
-                                DataContainer dataContainer = (DataContainer) executable;
-                                dataContainer.setLeyenda(leyenda);
-                            } else if (executable instanceof InformationTarget){
-                                InformationTarget infoT = (InformationTarget) executable;
-                                infoT.setLine(dright);
-                                infoT.setColumn(dleft);
-                            }
-                            project.getData().add(executable);
-                            executable = null;
-                            leyenda = new Leyenda();
-                        }
-                    :}
-                    ;
+        ;
 specification_data ::= data_chart
         | information_target
         ;
@@ -337,7 +368,7 @@ more_specifications ::= COMA specification more_specifications
 
 /*----------------- TARJETA DE INFORMACION -------------------*/
 information_target ::= LLAVE_L data_target more_data_target LLAVE_R ;
-data_target ::= VALUE TWO_DOTS numeric_data:n       {: 
+data_target ::= VALUE TWO_DOTS numeric_operable_data:n       {: 
                                                         InformationTarget infoT = getInformationTarget();
                                                         infoT.setValue(n);
                                                     :}
@@ -353,7 +384,7 @@ data_target ::= VALUE TWO_DOTS numeric_data:n       {:
                                                         InformationTarget infoT = getInformationTarget();
                                                         infoT.setIcon(s);
                                                     :}
-		| COLOR TWO_DOTS HEX_COLOR:c        {: 
+		| COLOR TWO_DOTS color_data:c        {: 
                                                         InformationTarget infoT = getInformationTarget();
                                                         infoT.setColor(c);
                                                     :}  
@@ -379,7 +410,7 @@ more_values_barras ::= COMA LLAVE_L value_chart_barras more_values_barras
 		| /* empty */
 		;
 
-value_chart_barras ::= CATEGORY TWO_DOTS string_data:sc COMA VALUE TWO_DOTS numeric_data:n optional_color_b LLAVE_R  
+value_chart_barras ::= CATEGORY TWO_DOTS string_data:sc COMA VALUE TWO_DOTS numeric_operable_data:n optional_color_b LLAVE_R  
                 {: 
                     if(executable == null){
                         executable = new ChartBarras();
@@ -403,7 +434,7 @@ value_chart_barras ::= CATEGORY TWO_DOTS string_data:sc COMA VALUE TWO_DOTS nume
                     }
                 :}
                 ;
-optional_color_b ::= COMA COLOR TWO_DOTS HEX_COLOR:c    
+optional_color_b ::= COMA COLOR TWO_DOTS color_data:c    
                 {:
                     try{
                         if(executable == null){
@@ -426,7 +457,7 @@ more_values_pie ::= COMA LLAVE_L value_chart_pie more_values_pie
 		| /* empty */
 		;
 
-value_chart_pie ::= LABEL:lab TWO_DOTS string_data:l COMA VALUE TWO_DOTS numeric_data:n optional_color_pie LLAVE_R 
+value_chart_pie ::= LABEL:lab TWO_DOTS string_data:l COMA VALUE TWO_DOTS numeric_operable_data:n optional_color_pie LLAVE_R 
                 {: 
                     try{
                         if(executable == null){
@@ -454,7 +485,7 @@ value_chart_pie ::= LABEL:lab TWO_DOTS string_data:l COMA VALUE TWO_DOTS numeric
                     }    
                 :}
                 ;
-optional_color_pie ::= COMA COLOR TWO_DOTS HEX_COLOR:c 
+optional_color_pie ::= COMA COLOR TWO_DOTS color_data:c 
                 {:
                     try{
                         if(executable == null){
@@ -478,7 +509,7 @@ more_values_points ::= COMA LLAVE_L value_chart_points more_values_points
 		| /* empty */
 		;
 
-value_chart_points ::= X_DATA:inf TWO_DOTS numeric_data:x COMA Y_DATA TWO_DOTS numeric_data:y optional_point_c_data LLAVE_R
+value_chart_points ::= X_DATA:inf TWO_DOTS numeric_operable_data:x COMA Y_DATA TWO_DOTS numeric_operable_data:y optional_point_c_data LLAVE_R
                 {:
                     try{
                         if(executable == null){
@@ -515,7 +546,7 @@ optional_point_c_data ::= COMA options_pointc optional_point_c_data
 		| /* empty */
 		;
 
-options_pointc ::= SIZE:s TWO_DOTS numeric_integer_data:n
+options_pointc ::= SIZE:s TWO_DOTS numeric_operable_data:n
                 {:
                     try{
                         if(executable == null){
@@ -540,7 +571,7 @@ options_pointc ::= SIZE:s TWO_DOTS numeric_integer_data:n
                         addSemanticError(sleft, sright, s, e.toString());
                     }
                 :}
-            | COLOR:cs TWO_DOTS HEX_COLOR:c
+            | COLOR:cs TWO_DOTS color_data:c
                 {:
                     try{
                         if(executable == null){
@@ -581,7 +612,7 @@ more_specific_data_line ::= COMA specific_data_line more_specific_data_line
 		;
 
 /*>>>>>>>>>>>>>>    DATOS   */
-specific_data_line ::= LLAVE_L X_DATA TWO_DOTS numeric_data COMA Y_DATA TWO_DOTS  numeric_data optional_data_lines LLAVE_R ;
+specific_data_line ::= LLAVE_L X_DATA TWO_DOTS numeric_operable_data:x COMA Y_DATA TWO_DOTS  numeric_operable_data:y optional_data_lines LLAVE_R ;
 
 optional_data_lines ::= COMA LABEL TWO_DOTS string_data:l
             {:
@@ -616,25 +647,26 @@ statement ::= variable_statement DOT_COMA
 	;
 
 internal_block ::= chart_creation
+                {:
+                        if(executable != null){ //save data
+                            if(executable instanceof DataContainer){
+                                DataContainer dataContainer = (DataContainer) executable;
+                                dataContainer.setLeyenda(leyenda);
+                            } else if (executable instanceof InformationTarget){
+                                InformationTarget infoT = (InformationTarget) executable;
+                                //infoT.setLine(dright);
+                                //infoT.setColumn(dleft);
+                            }
+                            //guargar en el subbloque correspondiente
+                        }
+                :}
     | variable_statement
     | /* empty */
     ;
 
 /*--------------VARIABLES -------------------*/
-variable_statement ::= VARIABLE:v asignation:a                  {: globalSymbolTable.put(v, a); :}
-    | VARIABLE:v PLUS_PLUS  {: if(globalSymbolTable.containsKey(v) && 
-                                ((globalSymbolTable.get(v) instanceof Float) || globalSymbolTable.get(v) instanceof Integer)){
-                                    Object valueObject = globalSymbolTable.get(v);
-                                    if(valueObject instanceof Integer){
-                                        Integer value = (Integer) valueObject;
-                                        globalSymbolTable.put(v, value + value);
-                                    } else {
-                                        Float value = (Float) valueObject;
-                                        globalSymbolTable.put(v, value + value);
-                                    }
-                                } else {
-
-                                }
+variable_statement ::= VARIABLE:v asignation:a  {: :}
+    | VARIABLE:v PLUS_PLUS  {: 
                             :}
     | VARIABLE MINUS_MINUS  {: 
                             :}
@@ -646,20 +678,16 @@ variable_statement ::= VARIABLE:v asignation:a                  {: globalSymbolT
     | VARIABLE:v DIV_EQUALS numeric_data:n
     ;
 
-asignation  ::= ASIGNATOR possible_values:v                     {: RESULT=v; :} ;
-possible_values ::= pure_numeric_data:n                         {: RESULT=n; :}
-        | pure_numeric_data:n1 PLUS numeric_data:n2             {: RESULT=n1+n2; :}
-	| pure_numeric_data:n1 MINUS numeric_data:n2    {: RESULT=n1-n2; :}
-	| pure_numeric_data:n1 DIV numeric_data:n2      {: if(n2 != 0){
-                                                                        RESULT=n1/n2 ;
-                                                                    } else {
-                                                                        addSemanticError(n2left, n2right, n2, "Diviendo entre 0, no se puedo operar");
-                                                                    }
+asignation  ::= ASIGNATOR possible_values:v                     {:  :} ;
+possible_values ::= pure_numeric_data:n                         {: :}
+        | pure_numeric_data:n1 PLUS numeric_data:n2             {:  :}
+	| pure_numeric_data:n1 MINUS numeric_data:n2    {: :}
+	| pure_numeric_data:n1 DIV numeric_data:n2      {: 
                                                                 :}
-	| pure_numeric_data:n1 TIMES numeric_data:n2    {: RESULT=n1*n2; :}
+	| pure_numeric_data:n1 TIMES numeric_data:n2    {:  :}
 	| pure_numeric_data PLUS_EQUALS numeric_data
-	| pure_string_data:s                            {: RESULT=s; :}
-	| pure_boolean_data:b                           {: RESULT=b; :}
+	| pure_string_data:s                            {: :}
+	| pure_boolean_data:b                           {::}
 	| VARIABLE
 	| VARIABLE PLUS numeric_data
 	| VARIABLE MINUS numeric_data
@@ -669,16 +697,16 @@ possible_values ::= pure_numeric_data:n                         {: RESULT=n; :}
 	;
 
 /*--------------CONDICIONALES -------------------*/
-condition ::= pure_boolean_data:b1 EQUALS boolean_data:b2   {: RESULT=(b1 == b2);:}
-	| pure_boolean_data:b1 DIFFERENT boolean_data:b2    {: RESULT=(b1 != b2);:}
-        | pure_string_data:s1 EQUALS string_data:s2         {: RESULT=(s1.equals(s2));:}
-	| pure_string_data:s1 DIFFERENT string_data:s2      {: RESULT=!(s1.equals(s2));:}
-	| pure_numeric_data:n1 EQUALS numeric_data:n2       {: RESULT=(n1==n2);   :}           
-        | pure_numeric_data:n1 DIFFERENT numeric_data:n2    {: RESULT=(n1!=n2);   :}
-        | pure_numeric_data:n1 MAYOR numeric_data:n2        {: RESULT=(n1>n2);   :}
-        | pure_numeric_data:n1 MAYOR_EQUALS numeric_data:n2 {: RESULT=(n1>=n2);   :}
-        | pure_numeric_data:n1 MENOR numeric_data:n2        {: RESULT=(n1<n2);   :}
-        | pure_numeric_data:n1 MENOR_EQUALS numeric_data:n2 {: RESULT=(n1<=n2);   :}
+condition ::= pure_boolean_data:b1 EQUALS boolean_data:b2   {: :}
+	| pure_boolean_data:b1 DIFFERENT boolean_data:b2    {: :}
+        | pure_string_data:s1 EQUALS string_data:s2         {: :}
+	| pure_string_data:s1 DIFFERENT string_data:s2      {::}
+	| pure_numeric_data:n1 EQUALS numeric_data:n2       {: :}           
+        | pure_numeric_data:n1 DIFFERENT numeric_data:n2    {: :}
+        | pure_numeric_data:n1 MAYOR numeric_data:n2        {: :}
+        | pure_numeric_data:n1 MAYOR_EQUALS numeric_data:n2 {: :}
+        | pure_numeric_data:n1 MENOR numeric_data:n2        {::}
+        | pure_numeric_data:n1 MENOR_EQUALS numeric_data:n2 {: :}
         | VARIABLE:s EQUALS pure_string_data:n              {: :}
         | VARIABLE EQUALS pure_numeric_data
         | VARIABLE EQUALS VARIABLE

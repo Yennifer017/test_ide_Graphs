@@ -1,6 +1,7 @@
 
 package compi1.testphone.models;
 
+import java_cup.runtime.Symbol;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,6 +13,6 @@ import lombok.Setter;
 public class InformationTarget extends Executable{
     int line;
     int column;
-    float value;
-    private String label, description, icon, color, link;
+    private MutableValue value;
+    private Symbol label, description, icon, color, link;
 }

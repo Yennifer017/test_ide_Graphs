@@ -4,6 +4,7 @@
  */
 package compi1.testphone.models;
 
+import java_cup.runtime.Symbol;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,11 +14,9 @@ import lombok.Setter;
  */
 @Getter @Setter
 public class Point {
-    float xData;
-    float yData;
+    MutableValue xData;
+    MutableValue yData;
     boolean saved;
-    String label;
+    Symbol label;
     
-    public Point(){
-    }
 }

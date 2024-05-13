@@ -21,9 +21,10 @@ public class TestPhone {
                            "backgroundColor": "#f0f0f0",
                            "fontFamily": "Arial, sans-serif",
                            "fontSize": "16px"
+                          id = 10;
                           {
                             "data": [
-                              { "category": "A", "value": 30, "color": "#ff5733" },
+                              { "category": "A", "value": id+10, "color": "#ff5733" },
                               { "category": "B", "value": 50, "color": "#33ff57" },
                               { "category": "C", "value": 20, "color": "#5733ff" },
                               { "category": "D", "value": 45, "color": "#ffff33" },

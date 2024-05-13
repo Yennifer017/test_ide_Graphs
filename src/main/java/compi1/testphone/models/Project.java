@@ -5,7 +5,9 @@
 package compi1.testphone.models;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java_cup.runtime.Symbol;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,9 +17,10 @@ import lombok.Setter;
  */
 @Getter @Setter
 public class Project {
-    private String title, description, header, footer, backgroundColor, fontFamilyS, fontSizeS;
-    private List<String> keyWords;
+    private Symbol title, description, header, footer, backgroundColor, fontFamilyS, fontSizeS;
+    private List<Symbol> keyWords;
     private List<Executable> data;
+    private HashMap<String, Object> globalSymbolTable; 
 
     public Project() {
         keyWords = new ArrayList<>();

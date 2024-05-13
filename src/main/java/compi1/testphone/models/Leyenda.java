@@ -4,6 +4,7 @@
  */
 package compi1.testphone.models;
 
+import java_cup.runtime.Symbol;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,9 +14,8 @@ import lombok.Setter;
  */
 @Getter @Setter
 public class Leyenda {
-    String title;
-    String xAxisLabel;
-    String yAxisLabel;
-    String legendPosition;
-    
+    private Symbol title;
+    private Symbol xAxisLabel;
+    private Symbol yAxisLabel;
+    private Symbol legendPosition;
 }
