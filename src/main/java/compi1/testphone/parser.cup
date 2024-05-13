@@ -6,6 +6,7 @@ import java.util.*;
 //arreglar imports
 import java.util.HashMap;
 import compi1.testphone.models.*;
+import compi1.testphone.statements.*;
 
 /*-----------------------------------------------------------
   CUP Specification for the Parser Class
@@ -15,12 +16,10 @@ parser code {:
     Lexer lex;
     private List<String> syntaxErrors;
     private List<String> semanticErrors;
-    private HashMap<String, Object> globalSymbolTable; 
     private Project project;
 
-    private boolean useInnerTable;
-    private boolean saveData;
     private Executable executable;
+    private List<Executable> executablesList;
     private Leyenda leyenda;
 
 
@@ -29,12 +28,10 @@ parser code {:
         super(lex);
         syntaxErrors = new LinkedList<>();
         semanticErrors = new LinkedList<>();
-        globalSymbolTable = new HashMap<>();
-        useInnerTable = false;
-        saveData = true;
         project = new Project();
 
         leyenda = new Leyenda();
+        executablesList = new ArrayList<>();
     }
 
     //getters
@@ -43,10 +40,6 @@ parser code {:
     }
     public List<String> getSyntaxErrors(){
         return this.syntaxErrors;
-    }
-
-    public HashMap<String, Object> getGlobalSymbolTable(){
-        return this.globalSymbolTable;
     }
 
     public List<String> getSemanticErrors(){
@@ -81,7 +74,8 @@ parser code {:
     public void syntax_error(Symbol cur_token) {
         String mss = "Simbolo: " + symbl_name_from_id(cur_token.sym)
                     + ", linea: " + cur_token.left
-                    + ", columna: " + cur_token.right;
+                    + ", columna: " + cur_token.right
+                    + ", lexema: " + cur_token.value;
         if (expected_token_ids().isEmpty()) {
             mss += " -- ya no se esperaba ningun simbolo";
         }
@@ -93,8 +87,13 @@ parser code {:
     }
 
     public void report_error(String message, Object info){
-        //HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-        System.out.println("error here");
+        Symbol cur_token = (Symbol) info;
+        String mss = "Simbolo: " + symbl_name_from_id(cur_token.sym)
+                    + ", linea: " + cur_token.left
+                    + ", columna: " + cur_token.right
+                    + ", lexema: " + cur_token.value
+                    + ", Info: " + message;
+        syntaxErrors.add(mss);
     }
 
     private void addSemanticError(int left, int right, Object value, String message){
@@ -120,7 +119,7 @@ terminal Boolean TRUE_B, FALSE_B;
 /*NO TERMINALES*/
 non terminal            instruction, code_inst, more_code, with_llaves,
                         global_specification, more_global_specifications, global_single_specification, keywords_specification, keywords_names, more_key_words,
-                        chart_creation, elements_chart, specification_data, leyend_chart_op, leyend_chart_op_f,
+                        elements_chart, specification_data, leyend_chart_op, leyend_chart_op_f,
                         leyend_chart, specifications_leyend, specification, more_specifications,
                         information_target, data_target, more_data_target,
                         data_chart, specific_chart_data,
@@ -130,14 +129,17 @@ non terminal            instruction, code_inst, more_code, with_llaves,
                         chart_lines, more_values_lines, value_chart_lines, more_specific_data_line,
                             specific_data_line, optional_data_lines,
                             optional_values_lines, optional_attribute_linec,
-                        statement, internal_block,
-                        asignation, possible_values,
-                        if_block, if_stmt, else_block,
+                        statement,
+                        possible_values,
+                        if_block, if_stmt,
                         for_block, for_stmt, variable_definition, optional_increment,
                         while_block, while_statement,
                         do_while_block
                         ;
-non terminal MutableValue   condition, variable_statement, numeric_operable_data;
+non terminal List<Executable>   internal_block, else_block;
+non terminal Executable chart_creation;
+non terminal Asignation    variable_statement;
+non terminal MutableValue   condition, numeric_operable_data, asignation;
 non terminal Symbol     align_specification, lines_style_attr, string_data, boolean_data, 
                         numeric_integer_data, numeric_data, color_data;
 non terminal Symbol     pure_string_data;
@@ -284,22 +286,12 @@ instruction ::= code_inst more_code
         ;
 
 code_inst ::= global_specification
-        | chart_creation 
-                {:
-                        if(executable != null){ //save data
-                            if(executable instanceof DataContainer){
-                                DataContainer dataContainer = (DataContainer) executable;
-                                dataContainer.setLeyenda(leyenda);
-                            } else if (executable instanceof InformationTarget){
-                                InformationTarget infoT = (InformationTarget) executable;
-                                //infoT.setLine(dright);
-                                //infoT.setColumn(dleft);
-                            }
-                            project.getData().add(executable);
-                            executable = null;
-                            leyenda = new Leyenda();
-                        }
-                :}
+        | chart_creation:e 
+            {:
+                if(e != null){ //save data
+                    project.getData().add(e);
+                }
+            :}
         | statement
 		;
 
@@ -339,8 +331,28 @@ more_key_words ::= COMA string_data:d more_key_words                {:project.ge
 **********************************************************/
 
 /*solo una grafica*/
-chart_creation ::= LLAVE_L elements_chart LLAVE_R ;
-elements_chart ::= leyend_chart_op DATA:d TWO_DOTS specification_data leyend_chart_op_f 
+chart_creation ::= LLAVE_L:l elements_chart LLAVE_R 
+            {:
+                if(executable != null){ //save data
+                    if(executable instanceof DataContainer){
+                        DataContainer dataContainer = (DataContainer) executable;
+                        dataContainer.setLeyenda(leyenda);
+                    } else if (executable instanceof InformationTarget){
+                        InformationTarget infoT = (InformationTarget) executable;
+                        infoT.setLine(lright);
+                        infoT.setColumn(lleft);
+                    }
+                    RESULT = executable;
+                    executable = null;
+                    leyenda = new Leyenda();
+                    //System.out.println(RESULT + "el result desde chart_creation");
+                } else {
+                    System.out.println("el executable es null desde chart_creation");
+                }
+            :}
+
+        ;
+elements_chart ::= leyend_chart_op DATA TWO_DOTS specification_data leyend_chart_op_f 
         ;
 specification_data ::= data_chart
         | information_target
@@ -639,93 +651,382 @@ optional_attribute_linec ::= COLOR TWO_DOTS HEX_COLOR
 /********************************************************
                 INSTRUCCIONES
 **********************************************************/
-statement ::= variable_statement DOT_COMA
+statement ::= variable_statement:a DOT_COMA
+            {:
+                project.getData().add(a);
+            :}
         | if_block
 	| for_block
 	| while_block
 	| do_while_block
 	;
 
-internal_block ::= chart_creation
-                {:
-                        if(executable != null){ //save data
-                            if(executable instanceof DataContainer){
-                                DataContainer dataContainer = (DataContainer) executable;
-                                dataContainer.setLeyenda(leyenda);
-                            } else if (executable instanceof InformationTarget){
-                                InformationTarget infoT = (InformationTarget) executable;
-                                //infoT.setLine(dright);
-                                //infoT.setColumn(dleft);
-                            }
-                            //guargar en el subbloque correspondiente
-                        }
-                :}
-    | variable_statement
+internal_block ::= chart_creation:e internal_block
+        {:
+            if(e != null){ //save data
+                //guardar en la lista
+                executablesList.add(0, e);
+            }
+        :}
+    | variable_statement:v internal_block
+        {:
+            //add the executable to the list
+            executablesList.add(0, v);
+        :}
     | /* empty */
     ;
 
 /*--------------VARIABLES -------------------*/
-variable_statement ::= VARIABLE:v asignation:a  {: :}
-    | VARIABLE:v PLUS_PLUS  {: 
-                            :}
-    | VARIABLE MINUS_MINUS  {: 
-                            :}
-    | VARIABLE:v PLUS_EQUALS numeric_data:n     {:
-
-                                                :}
-    | VARIABLE:v MINUS_EQUALS numeric_data:n
-    | VARIABLE:v TIMES_EQUALS numeric_data:n
-    | VARIABLE:v DIV_EQUALS numeric_data:n
+variable_statement ::= VARIABLE:v asignation:a
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            asign.setValue(a);
+            RESULT = asign;
+        :}
+    | VARIABLE:v PLUS_PLUS:o
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            MutableValue value = new MutableValue();
+            value.getSymbols().add(symbol(oleft, oright, o, sym.PLUS_PLUS));
+            asign.setValue(value);
+            RESULT = asign;
+        :}
+    | VARIABLE:v MINUS_MINUS:o
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            MutableValue value = new MutableValue();
+            value.getSymbols().add(symbol(oleft, oright, o, sym.MINUS_MINUS));
+            asign.setValue(value);
+            RESULT = asign;
+        :}
+    | VARIABLE:v PLUS_EQUALS:o numeric_data:n
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            MutableValue value = new MutableValue();
+            value.getSymbols().add(symbol(oleft, oright, o, sym.PLUS_EQUALS));
+            value.getSymbols().add(n);
+            asign.setValue(value);
+            RESULT = asign;
+        :}
+    | VARIABLE:v MINUS_EQUALS:o numeric_data:n
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            MutableValue value = new MutableValue();
+            value.getSymbols().add(symbol(oleft, oright, o, sym.MINUS_EQUALS));
+            value.getSymbols().add(n);
+            asign.setValue(value);
+            RESULT = asign;
+        :}
+    | VARIABLE:v TIMES_EQUALS:o numeric_data:n
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            MutableValue value = new MutableValue();
+            value.getSymbols().add(symbol(oleft, oright, o, sym.TIMES_EQUALS));
+            value.getSymbols().add(n);
+            asign.setValue(value);
+            RESULT = asign;
+        :}
+    | VARIABLE:v DIV_EQUALS:o numeric_data:n
+        {:
+            Asignation asign = new Asignation();
+            asign.setVariable(symbol(vleft, vright, v, sym.VARIABLE));
+            MutableValue value = new MutableValue();
+            value.getSymbols().add(symbol(oleft, oright, o, sym.DIV_EQUALS));
+            value.getSymbols().add(n);
+            asign.setValue(value);
+            RESULT = asign;
+        :}
     ;
 
-asignation  ::= ASIGNATOR possible_values:v                     {:  :} ;
-possible_values ::= pure_numeric_data:n                         {: :}
-        | pure_numeric_data:n1 PLUS numeric_data:n2             {:  :}
-	| pure_numeric_data:n1 MINUS numeric_data:n2    {: :}
-	| pure_numeric_data:n1 DIV numeric_data:n2      {: 
-                                                                :}
-	| pure_numeric_data:n1 TIMES numeric_data:n2    {:  :}
-	| pure_numeric_data PLUS_EQUALS numeric_data
-	| pure_string_data:s                            {: :}
-	| pure_boolean_data:b                           {::}
-	| VARIABLE
-	| VARIABLE PLUS numeric_data
-	| VARIABLE MINUS numeric_data
-	| VARIABLE DIV numeric_data
-	| VARIABLE TIMES numeric_data
-	| VARIABLE PLUS_EQUALS numeric_data
+asignation  ::= ASIGNATOR possible_values:v   ;
+possible_values ::= pure_numeric_data:v
+            {:  
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:n1 PLUS:o numeric_data:n2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.PLUS));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:n1 MINUS:o numeric_data:n2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MINUS));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:n1 DIV:o numeric_data:n2     
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIV));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:n1 TIMES:o numeric_data:n2 
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(n1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.TIMES));
+                mutable.getSymbols().add(n2);
+                RESULT=mutable;
+            :}
+	| pure_string_data:v    
+            {:  
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v);
+                RESULT=mutable;
+            :}
+	| pure_boolean_data:v 
+            {:  
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                RESULT=mutable;
+            :}
+	| VARIABLE:v PLUS:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.PLUS));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v MINUS:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MINUS));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v DIV:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIV));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
+	| VARIABLE:v TIMES:o numeric_data:n
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.TIMES));
+                mutable.getSymbols().add(n);
+                RESULT=mutable;
+            :}
 	;
 
 /*--------------CONDICIONALES -------------------*/
-condition ::= pure_boolean_data:b1 EQUALS boolean_data:b2   {: :}
-	| pure_boolean_data:b1 DIFFERENT boolean_data:b2    {: :}
-        | pure_string_data:s1 EQUALS string_data:s2         {: :}
-	| pure_string_data:s1 DIFFERENT string_data:s2      {::}
-	| pure_numeric_data:n1 EQUALS numeric_data:n2       {: :}           
-        | pure_numeric_data:n1 DIFFERENT numeric_data:n2    {: :}
-        | pure_numeric_data:n1 MAYOR numeric_data:n2        {: :}
-        | pure_numeric_data:n1 MAYOR_EQUALS numeric_data:n2 {: :}
-        | pure_numeric_data:n1 MENOR numeric_data:n2        {::}
-        | pure_numeric_data:n1 MENOR_EQUALS numeric_data:n2 {: :}
-        | VARIABLE:s EQUALS pure_string_data:n              {: :}
-        | VARIABLE EQUALS pure_numeric_data
-        | VARIABLE EQUALS VARIABLE
-        | VARIABLE EQUALS pure_boolean_data
-        | VARIABLE DIFFERENT pure_string_data
-        | VARIABLE DIFFERENT pure_numeric_data
-        | VARIABLE DIFFERENT VARIABLE
-        | VARIABLE DIFFERENT pure_boolean_data
-        | VARIABLE MAYOR numeric_data
-        | VARIABLE MAYOR_EQUALS numeric_data
-        | VARIABLE MENOR numeric_data
-        | VARIABLE MENOR_EQUALS numeric_data
+condition ::= pure_boolean_data:b1 EQUALS:o boolean_data:b2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(b1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(b2);
+                RESULT=mutable;
+            :}
+	| pure_boolean_data:b1 DIFFERENT:o boolean_data:b2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(b1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(b2);
+                RESULT=mutable;
+            :}
+        | pure_string_data:v1 EQUALS:o string_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+	| pure_string_data:v1 DIFFERENT:o string_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+	| pure_numeric_data:v1 EQUALS:o numeric_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:v1 DIFFERENT:o numeric_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:v1 MAYOR:o numeric_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MAYOR));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:v1 MAYOR_EQUALS:o numeric_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MAYOR_EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:v1 MENOR:o numeric_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MENOR));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | pure_numeric_data:v1 MENOR_EQUALS:o numeric_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(v1);
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MENOR_EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v EQUALS:o pure_string_data:v2
+            {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v EQUALS:o pure_numeric_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v EQUALS:o VARIABLE:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(symbol(v2left, v2right, v2, sym.VARIABLE));
+                RESULT=mutable;
+            :}
+        | VARIABLE:v EQUALS:o pure_boolean_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v DIFFERENT:o pure_string_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v DIFFERENT:o pure_numeric_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v DIFFERENT:o VARIABLE:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(symbol(v2left, v2right, v2, sym.VARIABLE));
+                RESULT=mutable;
+            :}
+        | VARIABLE:v DIFFERENT:o pure_boolean_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.DIFFERENT));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v MAYOR:o numeric_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MAYOR));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v MAYOR_EQUALS:o numeric_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MAYOR_EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v MENOR:o numeric_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MENOR));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
+        | VARIABLE:v MENOR_EQUALS:o numeric_data:v2
+             {:
+                MutableValue mutable = new MutableValue();
+                mutable.getSymbols().add(symbol(vleft, vright, v, sym.VARIABLE));
+                mutable.getSymbols().add(symbol(oleft, oright, o, sym.MENOR_EQUALS));
+                mutable.getSymbols().add(v2);
+                RESULT=mutable;
+            :}
         ;
 
 /*--------------IF INSTRUCTION -------------------*/
-if_block ::= if_stmt LLAVE_L internal_block LLAVE_R else_block  ;
-if_stmt ::= IF PARENTESIS_L condition PARENTESIS_R ;
+if_block ::= if_stmt else_block:e  ;
+if_stmt ::= IF PARENTESIS_L condition:mutval PARENTESIS_R LLAVE_L internal_block LLAVE_R
+            {:
+                
+            :}
+        ;
 
-else_block ::= ELSE LLAVE_L internal_block LLAVE_R
+else_block ::= ELSE LLAVE_L internal_block:list LLAVE_R
+            {:
+                RESULT = list;
+                executablesList = new ArrayList();
+            :}
 	| /*empty*/
 	;
 
